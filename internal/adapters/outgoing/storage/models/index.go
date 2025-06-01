@@ -1,8 +1,11 @@
 package models
 
 import (
+	"encoding/json"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
 )
 
 // Index represents the database model for a search index
@@ -21,4 +24,51 @@ func (i *Index) BeforeCreate(tx *gorm.DB) (err error) {
 		i.ID = uuid.NewString()
 	}
 	return
+}
+
+// ToDomain converts the database model to a domain entity
+func (i *Index) ToDomain() (*domain.Index, error) {
+	index, err := domain.NewIndex(i.Name, i.Description)
+	if err != nil {
+		return nil, err
+	}
+
+	index.ID = i.ID
+
+	if err := i.parseSettings(index); err != nil {
+		return nil, err
+	}
+
+	if err := i.parseMappings(index); err != nil {
+		return nil, err
+	}
+
+	return index, nil
+}
+
+// parseSettings unmarshal settings JSON into the domain index
+func (i *Index) parseSettings(index *domain.Index) error {
+	if i.SettingsJSON == "" {
+		return nil
+	}
+
+	var settings domain.IndexSettings
+	if err := json.Unmarshal([]byte(i.SettingsJSON), &settings); err != nil {
+		return err
+	}
+	index.Settings = settings
+	return nil
+}
+
+// parseMappings unmarshal mapping JSON into the domain index
+func (i *Index) parseMappings(index *domain.Index) error {
+	if i.MappingsJSON == "" {
+		return nil
+	}
+	var mappings map[string]string
+	if err := json.Unmarshal([]byte(i.MappingsJSON), &mappings); err != nil {
+		return err
+	}
+	index.DocumentMapping = mappings
+	return nil
 }
