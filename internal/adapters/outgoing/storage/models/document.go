@@ -68,3 +68,20 @@ func (d *Document) ToDomain() *domain.Document {
 
 	return doc
 }
+
+// FromDomain converts a domain entity to a database model
+func (d *Document) FromDomain(doc *domain.Document) *Document {
+	d.ID = doc.ID
+	d.URL = doc.URL
+	d.Title = doc.Title
+	d.Content = doc.Content
+	d.ContentType = string(doc.ContentType)
+	d.LastCrawled = doc.LastCrawled
+	d.LastModified = doc.LastModified
+	d.Lang = doc.Lang
+	d.MetaDesc = doc.MetaDesc
+	d.ContentLength = doc.ContentLength
+	d.ImportanceRank = doc.ImportanceRank
+	d.IndexID = doc.IndexID
+	return d
+}
