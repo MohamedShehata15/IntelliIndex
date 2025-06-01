@@ -72,3 +72,24 @@ func (i *Index) parseMappings(index *domain.Index) error {
 	index.DocumentMapping = mappings
 	return nil
 }
+
+// FromDomain converts a domain entity to a database model
+func (i *Index) FromDomain(index *domain.Index) error {
+	i.ID = index.ID
+	i.Name = index.Name
+	i.Description = index.Description
+
+	settingsJSON, err := json.Marshal(index.Settings)
+	if err != nil {
+		return err
+	}
+	i.SettingsJSON = string(settingsJSON)
+
+	mappingsJSON, err := json.Marshal(index.DocumentMapping)
+	if err != nil {
+		return err
+	}
+	i.MappingsJSON = string(mappingsJSON)
+
+	return nil
+}
