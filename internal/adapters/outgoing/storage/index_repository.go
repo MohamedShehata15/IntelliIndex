@@ -69,8 +69,24 @@ func (i IndexRepository) GetByID(ctx context.Context, id string) (*domain.Index,
 }
 
 func (i IndexRepository) GetByName(ctx context.Context, name string) (*domain.Index, error) {
-	//TODO implement me
-	panic("implement me")
+	if name == "" {
+		return nil, errors.New("index name cannot be empty")
+	}
+
+	var dbIndex models.Index
+	if err := i.db.WithContext(ctx).First(&dbIndex, "name = ?", name).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get index by name: %w", err)
+	}
+
+	index, err := dbIndex.ToDomain()
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert database model to domain model: %w", err)
+	}
+
+	return index, nil
 }
 
 func (i IndexRepository) List(ctx context.Context) ([]*domain.Index, error) {
