@@ -90,8 +90,21 @@ func (i IndexRepository) GetByName(ctx context.Context, name string) (*domain.In
 }
 
 func (i IndexRepository) List(ctx context.Context) ([]*domain.Index, error) {
-	//TODO implement me
-	panic("implement me")
+	var dbIndices []models.Index
+	if err := i.db.WithContext(ctx).Find(&dbIndices).Error; err != nil {
+		return nil, fmt.Errorf("failed to list indices: %w", err)
+	}
+
+	indices := make([]*domain.Index, 0, len(dbIndices))
+	for _, dbIndex := range dbIndices {
+		index, err := dbIndex.ToDomain()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert database model to domain model: %w", err)
+		}
+		indices = append(indices, index)
+	}
+
+	return indices, nil
 }
 
 func (i IndexRepository) Delete(ctx context.Context, id string) error {
