@@ -108,10 +108,54 @@ func (i IndexRepository) List(ctx context.Context) ([]*domain.Index, error) {
 }
 
 func (i IndexRepository) Delete(ctx context.Context, id string) error {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return errors.New("index ID cannot be empty")
+	}
+
+	return i.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		documentsSubQuery := tx.Model(&models.Document{}).Select("id").Where("index_id = ?", id)
+
+		// Delete related document data
+		if err := deleteDocumentRelations(tx, documentsSubQuery); err != nil {
+			return err
+		}
+
+		// Delete all documents with index_id
+		if err := tx.Where("index_id = ?", id).Delete(&models.Document{}).Error; err != nil {
+			return fmt.Errorf("failed to delete documents for index: %w", err)
+		}
+
+		// Delete index
+		result := tx.Delete(&models.Index{}, "id = ?", id)
+		if result.Error != nil {
+			return fmt.Errorf("failed to delete index: %w", result.Error)
+		}
+
+		return nil
+	})
 }
 
+func deleteDocumentRelations(tx *gorm.DB, documentsSubQuery *gorm.DB) error {
+	// Delete document keywords
+	if err := tx.Where("document_id IN (?)", documentsSubQuery).
+		Delete(&models.DocumentKeyword{}).Error; err != nil {
+		return fmt.Errorf("failed to delete document keywords: %w", err)
+	}
+
+	// Delete document links
+	if err := tx.Where("source_id IN (?)", documentsSubQuery).
+		Delete(&models.DocumentLink{}).Error; err != nil {
+		return fmt.Errorf("failed to delete document links: %w", err)
+	}
+
+	// Delete document metadata
+	if err := tx.Where("document_id IN (?)", documentsSubQuery).
+		Delete(&models.DocumentMetadata{}).Error; err != nil {
+		return fmt.Errorf("failed to delete document metadata: %w", err)
+	}
+
+	return nil
+}
 func (i IndexRepository) Update(ctx context.Context, index *domain.Index) error {
 	//TODO implement me
 	panic("implement me")
