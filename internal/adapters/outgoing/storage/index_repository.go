@@ -2,11 +2,15 @@ package storage
 
 import (
 	"context"
-	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
+	"errors"
+	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 
+	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/storage/models"
 	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
+	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
 )
 
 // IndexRepository implements the outgoing.IndexRepository interface using GORM
@@ -25,8 +29,22 @@ func NewIndexRepository(db *gorm.DB) *IndexRepository {
 var _ outgoing.IndexRepository = (*IndexRepository)(nil)
 
 func (i IndexRepository) Create(ctx context.Context, index *domain.Index) error {
-	//TODO implement me
-	panic("implement me")
+	if index == nil {
+		return errors.New("index cannot bi nil")
+	}
+	dbIndex := &models.Index{}
+	if err := dbIndex.FromDomain(index); err != nil {
+		return fmt.Errorf("failed to convert domain model to database model: %w", err)
+	}
+	if err := i.db.WithContext(ctx).Create(dbIndex).Error; err != nil {
+		if i.isUniqueConstraintViolation(err) {
+			return fmt.Errorf("index with name %s already exists", index.Name)
+		}
+		return fmt.Errorf("failed to create index: %w", err)
+	}
+	index.ID = dbIndex.ID
+
+	return nil
 }
 
 func (i IndexRepository) GetByID(ctx context.Context, id string) (*domain.Index, error) {
@@ -67,4 +85,13 @@ func (i IndexRepository) GetStats(ctx context.Context, id string) (map[string]in
 func (i IndexRepository) RefreshIndex(ctx context.Context, id string) error {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (r *IndexRepository) isUniqueConstraintViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "unique constraint") ||
+		strings.Contains(err.Error(), "duplicate key") ||
+		strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
