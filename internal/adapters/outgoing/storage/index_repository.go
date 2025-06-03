@@ -262,7 +262,6 @@ func (i IndexRepository) GetStats(ctx context.Context, id string) (map[string]in
 		"last_document_date": lastModified,
 	}
 
-	// No refresh needed for sql database
 	return stats, nil
 }
 
@@ -278,6 +277,7 @@ func (i IndexRepository) RefreshIndex(ctx context.Context, id string) error {
 		}
 		return fmt.Errorf("failed to refresh index: %w", err)
 	}
+	// No refresh needed for sql database
 	return nil
 }
 
