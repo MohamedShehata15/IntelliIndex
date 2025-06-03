@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -220,8 +221,48 @@ func (i IndexRepository) UpdateSettings(ctx context.Context, id string, settings
 }
 
 func (i IndexRepository) GetStats(ctx context.Context, id string) (map[string]interface{}, error) {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return nil, errors.New("index ID cannot be empty")
+	}
+
+	var existingIndex models.Index
+	if err := i.db.WithContext(ctx).First(&existingIndex, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("index with ID %s does not exist", id)
+		}
+		return nil, fmt.Errorf("failed to check if index exists: %w", err)
+	}
+
+	type StatsResult struct {
+		Count   int64
+		AvgSize float64
+	}
+	var result StatsResult
+	if err := i.db.WithContext(ctx).Model(&models.Document{}).
+		Where("index_id = ?", id).
+		Select("COUNT(*) as count, COALESCE(AVG(content_length), 0) as avg_size").
+		Scan(&result).Error; err != nil {
+		return nil, fmt.Errorf("failed to get document statistics: %w", err)
+	}
+
+	var lastModified time.Time
+	if err := i.db.WithContext(ctx).Model(&models.Document{}).
+		Where("index_id = ?", id).
+		Order("updated_at DESC").
+		Limit(1).
+		Pluck("updated_at", &lastModified).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("failed to get last modified date: %w", err)
+	}
+
+	stats := map[string]interface{}{
+		"document_count":     result.Count,
+		"avg_document_size":  result.AvgSize,
+		"created_at":         existingIndex.CreatedAt,
+		"updated_at":         existingIndex.UpdatedAt,
+		"last_document_date": lastModified,
+	}
+
+	return stats, nil
 }
 
 func (i IndexRepository) RefreshIndex(ctx context.Context, id string) error {
