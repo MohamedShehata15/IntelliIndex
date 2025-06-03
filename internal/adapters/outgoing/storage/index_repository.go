@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -194,8 +195,28 @@ func (i IndexRepository) Update(ctx context.Context, index *domain.Index) error 
 }
 
 func (i IndexRepository) UpdateSettings(ctx context.Context, id string, settings domain.IndexSettings) error {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return errors.New("index ID cannot be empty")
+	}
+
+	var existingIndex models.Index
+	if err := i.db.WithContext(ctx).First(&existingIndex, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("index with ID %s does not exist", id)
+		}
+		return fmt.Errorf("failed to get index: %w", err)
+	}
+
+	settingsJSON, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal settings to JSON: %w", err)
+	}
+
+	if err := i.db.WithContext(ctx).Model(&existingIndex).Update("settings", string(settingsJSON)).Error; err != nil {
+		return fmt.Errorf("failed to update index settings: %w", err)
+	}
+
+	return nil
 }
 
 func (i IndexRepository) GetStats(ctx context.Context, id string) (map[string]interface{}, error) {
