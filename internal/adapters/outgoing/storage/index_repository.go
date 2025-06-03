@@ -156,9 +156,41 @@ func deleteDocumentRelations(tx *gorm.DB, documentsSubQuery *gorm.DB) error {
 
 	return nil
 }
+
 func (i IndexRepository) Update(ctx context.Context, index *domain.Index) error {
-	//TODO implement me
-	panic("implement me")
+	if index == nil {
+		return errors.New("index cannot be nil")
+	}
+
+	if index.ID == "" {
+		return errors.New("index ID cannot be empty")
+	}
+
+	var existingIndex models.Index
+	if err := i.db.WithContext(ctx).First(&existingIndex, "id = ?", index.ID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("index with ID %s does not exist", index.ID)
+		}
+		return fmt.Errorf("failed to check if index exists: %w", err)
+	}
+
+	if err := existingIndex.FromDomain(index); err != nil {
+		return fmt.Errorf("failed to convert domain model to database model: %w", err)
+	}
+
+	if err := i.db.WithContext(ctx).Model(&existingIndex).Updates(models.Index{
+		Name:         existingIndex.Name,
+		Description:  existingIndex.Description,
+		SettingsJSON: existingIndex.SettingsJSON,
+		MappingsJSON: existingIndex.MappingsJSON,
+	}).Error; err != nil {
+		if i.isUniqueConstraintViolation(err) {
+			return fmt.Errorf("index with name %s already exists", index.Name)
+		}
+		return fmt.Errorf("failed to update index: %w", err)
+	}
+
+	return nil
 }
 
 func (i IndexRepository) UpdateSettings(ctx context.Context, id string, settings domain.IndexSettings) error {
