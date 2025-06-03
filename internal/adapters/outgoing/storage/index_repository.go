@@ -262,12 +262,23 @@ func (i IndexRepository) GetStats(ctx context.Context, id string) (map[string]in
 		"last_document_date": lastModified,
 	}
 
+	// No refresh needed for sql database
 	return stats, nil
 }
 
 func (i IndexRepository) RefreshIndex(ctx context.Context, id string) error {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return errors.New("index ID cannot be empty")
+	}
+
+	var existingIndex models.Index
+	if err := i.db.WithContext(ctx).First(&existingIndex, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("index with ID %s does not exist", id)
+		}
+		return fmt.Errorf("failed to refresh index: %w", err)
+	}
+	return nil
 }
 
 func (r *IndexRepository) isUniqueConstraintViolation(err error) bool {
