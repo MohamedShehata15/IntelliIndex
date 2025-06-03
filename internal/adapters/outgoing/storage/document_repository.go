@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/storage/models"
 	"strings"
 	"time"
 
 	"gorm.io/gorm"
 
+	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/storage/models"
 	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
 	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
 )
