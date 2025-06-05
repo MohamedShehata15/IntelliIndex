@@ -308,3 +308,22 @@ func (c *Client) IndexExists(ctx context.Context, indexName string) (bool, error
 
 	return res.StatusCode == http.StatusOK, nil
 }
+
+// DeleteIndex deletes an index
+func (c *Client) DeleteIndex(ctx context.Context, indexName string) error {
+	fullIndexName := c.IndexNameWithPrefix(indexName)
+	res, err := c.PerformRequest(ctx, &esapi.IndicesDeleteRequest{
+		Index: []string{fullIndexName},
+	})
+	if err != nil {
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("error closing response body: %v\n", err)
+		}
+	}(res.Body)
+
+	return nil
+}
