@@ -329,3 +329,13 @@ func createDefaultMappings() map[string]interface{} {
 		},
 	}
 }
+
+// getString safely extracts a string value from a map
+func getString(m map[string]interface{}, key string) string {
+	if val, ok := m[key]; ok {
+		if strVal, ok := val.(string); ok {
+			return strVal
+		}
+	}
+	return ""
+}
