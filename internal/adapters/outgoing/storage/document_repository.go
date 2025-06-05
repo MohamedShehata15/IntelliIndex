@@ -446,8 +446,102 @@ func (d DocumentRepository) List(ctx context.Context, page, pageSize int) ([]*do
 }
 
 func (d DocumentRepository) Search(ctx context.Context, query *domain.SearchQuery) ([]*domain.Document, int, error) {
-	//TODO implement me
-	panic("implement me")
+	if query == nil {
+		return nil, 0, errors.New("search query cannot be nil")
+	}
+	if err := query.Validate(); err != nil {
+		return nil, 0, fmt.Errorf("invalid search query: %w", err)
+	}
+	db := d.buildSearchQuery(ctx, query)
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count search results: %w", err)
+	}
+
+	db = d.applyPaginationAndSorting(db, query)
+
+	var dbDocs []models.Document
+	result := db.
+		Preload("DocumentMetadata").
+		Preload("DocumentLinks").
+		Preload("DocumentKeywords").
+		Find(&dbDocs)
+	if result.Error != nil {
+		return nil, 0, fmt.Errorf("failed to search documents: %w", result.Error)
+	}
+
+	documents := make([]*domain.Document, 0, len(dbDocs))
+	for _, dbDoc := range dbDocs {
+		doc := dbDoc.ToDomain()
+		d.applyScoring(doc, query)
+		documents = append(documents, doc)
+	}
+
+	return documents, int(count), nil
+}
+
+func (d DocumentRepository) buildSearchQuery(ctx context.Context, query *domain.SearchQuery) *gorm.DB {
+	db := d.db.WithContext(ctx).Model(&models.Document{})
+
+	if query.Query != "" {
+		searchTerm := "%" + query.Query + "%"
+		db = db.Where("title LIKE ? OR content LIKE ? OR meta_desc LIKE ?", searchTerm, searchTerm, searchTerm)
+	}
+
+	if query.Filters != nil {
+		if indexID, ok := query.Filters["index_id"].(string); ok && indexID != "" {
+			db = db.Where("index_id = ?", indexID)
+		}
+		if contentType, ok := query.Filters["content_type"].(string); ok && contentType != "" {
+			db = db.Where("content_type = ?", contentType)
+		}
+	}
+
+	if query.TimeRange != nil && !query.TimeRange.From.IsZero() {
+		field := "last_crawled"
+		if query.TimeRange.Field != "" {
+			field = query.TimeRange.Field
+		}
+		db = db.Where(fmt.Sprintf("%s >= ?", field), query.TimeRange.From)
+
+		if !query.TimeRange.To.IsZero() {
+			db = db.Where(fmt.Sprintf("%s <= ?", field), query.TimeRange.To)
+		}
+	}
+
+	return db
+}
+
+func (d DocumentRepository) applyPaginationAndSorting(db *gorm.DB, query *domain.SearchQuery) *gorm.DB {
+	db = db.Offset(query.Offset()).Limit(query.Limit())
+	if len(query.SortFields) > 0 {
+		for _, field := range query.SortFields {
+			order := strings.ToUpper(string(query.SortOrder))
+			db = db.Order(fmt.Sprintf("%s %s", field, order))
+		}
+	} else {
+		db = db.Order("importance_rank DESC, last_crawled DESC")
+	}
+
+	return db
+}
+
+func (d DocumentRepository) applyScoring(doc *domain.Document, query *domain.SearchQuery) {
+	if query.Query == "" {
+		return
+	}
+
+	queryLower := strings.ToLower(query.Query)
+	titleLower := strings.ToLower(doc.Title)
+	contentLower := strings.ToLower(doc.Content)
+
+	if strings.Contains(titleLower, queryLower) {
+		doc.Score += 10.0
+	}
+	if strings.Contains(contentLower, queryLower) {
+		doc.Score += 5.0
+	}
 }
 
 func (d DocumentRepository) CountByIndexID(ctx context.Context, indexID string) (int, error) {
