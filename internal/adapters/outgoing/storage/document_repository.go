@@ -183,8 +183,23 @@ func (d DocumentRepository) isUniqueConstraintViolation(err error) bool {
 }
 
 func (d DocumentRepository) GetByID(ctx context.Context, id string) (*domain.Document, error) {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return nil, errors.New("document ID cannot be empty")
+	}
+
+	var dbDoc models.Document
+	result := d.db.WithContext(ctx).
+		Preload("DocumentMetadata").
+		Preload("DocumentLinks").
+		Preload("DocumentKeywords").
+		First(&dbDoc, "id = ?", id)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get document by ID: %w", result.Error)
+	}
+	return dbDoc.ToDomain(), nil
 }
 
 func (d DocumentRepository) GetByURL(ctx context.Context, url string) (*domain.Document, error) {
