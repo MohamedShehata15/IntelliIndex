@@ -223,8 +223,37 @@ func (d DocumentRepository) GetByURL(ctx context.Context, url string) (*domain.D
 }
 
 func (d DocumentRepository) Delete(ctx context.Context, id string) error {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return errors.New("document ID cannot be empty")
+	}
+
+	return d.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var exists bool
+		if err := tx.Model(&models.Document{}).Select("1").Where("id = ?", id).First(&exists).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return fmt.Errorf("failed to check document existence: %w", err)
+		}
+
+		if err := tx.Where("document_id = ?", id).Delete(&models.DocumentKeyword{}).Error; err != nil {
+			return fmt.Errorf("failed to delete document keywords: %w", err)
+		}
+
+		if err := tx.Where("source_id = ?", id).Delete(&models.DocumentLink{}).Error; err != nil {
+			return fmt.Errorf("failed to delete document links: %w", err)
+		}
+
+		if err := tx.Where("document_id = ?", id).Delete(&models.DocumentMetadata{}).Error; err != nil {
+			return fmt.Errorf("failed to delete document metadata: %w", err)
+		}
+
+		if err := tx.Delete(&models.Document{}, "id = ?", id).Error; err != nil {
+			return fmt.Errorf("failed to delete document: %w", err)
+		}
+
+		return nil
+	})
 }
 
 func (d DocumentRepository) Update(ctx context.Context, document *domain.Document) error {
