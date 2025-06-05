@@ -327,3 +327,22 @@ func (c *Client) DeleteIndex(ctx context.Context, indexName string) error {
 
 	return nil
 }
+
+// RefreshIndex refreshes an index to make recently added documents available for search
+func (c *Client) RefreshIndex(ctx context.Context, indexName string) error {
+	fullIndexName := c.IndexNameWithPrefix(indexName)
+	res, err := c.PerformRequest(ctx, &esapi.IndicesRefreshRequest{
+		Index: []string{fullIndexName},
+	})
+	if err != nil {
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("error closing response body: %v\n", err)
+		}
+	}(res.Body)
+
+	return nil
+}
