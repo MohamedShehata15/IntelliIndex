@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"io"
@@ -62,9 +63,38 @@ func (i IndexRepository) GetStats(ctx context.Context, id string) (map[string]in
 	panic("implement me")
 }
 
-func (i IndexRepository) RefreshIndex(ctx context.Context, id string) error {
-	//TODO implement me
-	panic("implement me")
+func (i *IndexRepository) RefreshIndex(ctx context.Context, id string) error {
+	if id == "" {
+		return errors.New("index ID cannot be empty")
+	}
+	exists, err := i.indexExists(ctx, id)
+	if err != nil {
+		return fmt.Errorf("error checking if index exists: %w", err)
+	}
+
+	if !exists {
+		return fmt.Errorf("index with ID %s does not exist", id)
+	}
+
+	indexName := i.client.IndexNameWithPrefix(id)
+	res, err := i.client.PerformRequest(ctx, &esapi.IndicesRefreshRequest{
+		Index: []string{indexName},
+	})
+	if err != nil {
+		return fmt.Errorf("error refreshing index: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("error closing response body: %v\n", err)
+		}
+	}(res.Body)
+
+	if res.StatusCode >= 400 {
+		return fmt.Errorf("error refreshing index: unexpected status code %d", res.StatusCode)
+	}
+
+	return nil
 }
 
 // NewIndexRepository creates a new Elasticsearch index repository
