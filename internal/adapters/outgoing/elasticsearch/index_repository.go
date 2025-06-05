@@ -94,6 +94,17 @@ func (i *IndexRepository) indexExists(ctx context.Context, id string) (bool, err
 	return res.StatusCode == 200, nil
 }
 
+// StopAutoRefresh stops automatic refreshing for an index
+func (r *IndexRepository) StopAutoRefresh(id string) {
+	r.refreshMutex.Lock()
+	defer r.refreshMutex.Unlock()
+
+	if ticker, exists := r.refreshTickers[id]; exists {
+		ticker.Stop()
+		delete(r.refreshTickers, id)
+	}
+}
+
 // buildIndexSettings converts domain model settings to Elasticsearch settings
 func (i *IndexRepository) buildIndexSettings(index *domain.Index) (map[string]interface{}, map[string]interface{}, error) {
 	settings := createBasicSettings(index)
