@@ -1,5 +1,13 @@
 package elasticsearch
 
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"strings"
+)
+
 // IndexMapping represents the structure of an Elasticsearch index mapping
 type IndexMapping struct {
 	Settings IndexSettings          `json:"settings"`
@@ -225,4 +233,32 @@ func DefaultDocumentMapping() IndexMapping {
 			},
 		},
 	}
+}
+
+// CreateIndexTemplate creates an index template in Elasticsearch
+func (c *Client) CreateIndexTemplate(ctx context.Context, name string, mapping IndexMapping, patterns []string) error {
+	if !strings.HasPrefix(name, c.indexPrefix) && c.indexPrefix != "" {
+		name = c.indexPrefix + "-" + name
+	}
+
+	templateBody := map[string]interface{}{
+		"index_patterns": patterns,
+		"template":       mapping,
+	}
+
+	body, err := json.Marshal(templateBody)
+	if err != nil {
+		return fmt.Errorf("error marshaling index template: %w", err)
+	}
+
+	res, err := c.PerformRequest(ctx, &esapi.IndicesPutTemplateRequest{
+		Name: name,
+		Body: strings.NewReader(string(body)),
+	})
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	return nil
 }
