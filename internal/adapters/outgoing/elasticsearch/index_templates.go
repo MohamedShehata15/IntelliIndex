@@ -264,7 +264,7 @@ func (c *Client) CreateIndexTemplate(ctx context.Context, name string, mapping I
 	return nil
 }
 
-// CreateIndex creates a new index with given mapping
+// CreateIndex creates a new index with the given mapping
 func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping IndexMapping) error {
 	body, err := json.Marshal(mapping)
 	if err != nil {
