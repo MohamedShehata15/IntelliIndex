@@ -180,9 +180,9 @@ func (i *IndexRepository) SetupAutoRefresh(ctx context.Context, id string) error
 }
 
 // ensureMetadataIndexExists creates the indices metadata index if it doesn't exist
-func (r *IndexRepository) ensureMetadataIndexExists(ctx context.Context) error {
-	indexName := r.client.IndexNameWithPrefix("indices-metadata")
-	exists, err := r.client.IndexExists(ctx, "indices-metadata")
+func (i *IndexRepository) ensureMetadataIndexExists(ctx context.Context) error {
+	indexName := i.client.IndexNameWithPrefix("indices-metadata")
+	exists, err := i.client.IndexExists(ctx, "indices-metadata")
 	if err != nil {
 		return fmt.Errorf("error checking if metadata index exists: %w", err)
 	}
@@ -217,14 +217,19 @@ func (r *IndexRepository) ensureMetadataIndexExists(ctx context.Context) error {
 		},
 	}
 
-	res, err := r.client.PerformRequest(ctx, &esapi.IndicesCreateRequest{
+	res, err := i.client.PerformRequest(ctx, &esapi.IndicesCreateRequest{
 		Index: indexName,
 		Body:  bytes.NewReader(mustMarshalJSON(body)),
 	})
 	if err != nil {
 		return fmt.Errorf("error creating metadata index: %w", err)
 	}
-	defer res.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("error closing response body: %v\n", err)
+		}
+	}(res.Body)
 
 	return nil
 }
