@@ -95,14 +95,57 @@ func (i *IndexRepository) indexExists(ctx context.Context, id string) (bool, err
 }
 
 // StopAutoRefresh stops automatic refreshing for an index
-func (r *IndexRepository) StopAutoRefresh(id string) {
-	r.refreshMutex.Lock()
-	defer r.refreshMutex.Unlock()
+func (i *IndexRepository) StopAutoRefresh(id string) {
+	i.refreshMutex.Lock()
+	defer i.refreshMutex.Unlock()
 
-	if ticker, exists := r.refreshTickers[id]; exists {
+	if ticker, exists := i.refreshTickers[id]; exists {
 		ticker.Stop()
-		delete(r.refreshTickers, id)
+		delete(i.refreshTickers, id)
 	}
+}
+
+// SetupAutoRefresh creates a periodic refresh for an index based on its settings
+func (i *IndexRepository) SetupAutoRefresh(ctx context.Context, id string) error {
+	index, err := i.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("error getting index for auto-refresh: %w", err)
+	}
+
+	if index.Settings.RefreshInterval == "" || index.Settings.RefreshInterval == "-1" {
+		return nil
+	}
+
+	duration, err := time.ParseDuration(index.Settings.RefreshInterval)
+	if err != nil {
+		return fmt.Errorf("error parsing refresh interval: %w", err)
+	}
+
+	i.StopAutoRefresh(id)
+
+	ticker := time.NewTicker(duration)
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				refreshCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				if err := i.RefreshIndex(refreshCtx, id); err != nil {
+					fmt.Printf("Error auto-refreshing index %s: %v\n", id, err)
+				}
+				cancel()
+			}
+		}
+	}()
+
+	i.refreshMutex.Lock()
+	i.refreshTickers[id] = ticker
+	i.refreshMutex.Unlock()
+
+	return nil
 }
 
 // buildIndexSettings converts domain model settings to Elasticsearch settings
