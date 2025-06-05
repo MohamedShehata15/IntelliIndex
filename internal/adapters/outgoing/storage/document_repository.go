@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gorm.io/gorm/clause"
 	"strings"
 	"time"
 
@@ -257,8 +258,155 @@ func (d DocumentRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (d DocumentRepository) Update(ctx context.Context, document *domain.Document) error {
-	//TODO implement me
-	panic("implement me")
+	if document == nil {
+		return errors.New("document cannot be nil")
+	}
+	if document.ID == "" {
+		return errors.New("document ID cannot be empty")
+	}
+	if err := document.Validate(); err != nil {
+		return fmt.Errorf("invalid document: %w", err)
+	}
+
+	return d.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var existingDoc models.Document
+		if err := tx.First(&existingDoc, "id = ?", document.ID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("document with ID %s does not exist", document.ID)
+			}
+			return fmt.Errorf("failed to check if document exists: %w", err)
+		}
+
+		dbDoc := models.Document{}
+		dbDoc.FromDomain(document)
+		dbDoc.ID = document.ID
+
+		if err := tx.Model(&dbDoc).Updates(map[string]interface{}{
+			"url":             dbDoc.URL,
+			"title":           dbDoc.Title,
+			"content":         dbDoc.Content,
+			"content_type":    dbDoc.ContentType,
+			"last_crawled":    dbDoc.LastCrawled,
+			"last_modified":   dbDoc.LastModified,
+			"lang":            dbDoc.Lang,
+			"meta_desc":       dbDoc.MetaDesc,
+			"content_length":  dbDoc.ContentLength,
+			"importance_rank": dbDoc.ImportanceRank,
+			"index_id":        dbDoc.IndexID,
+		}).Error; err != nil {
+			if d.isUniqueConstraintViolation(err) {
+				return fmt.Errorf("document with URL %s already exists", document.URL)
+			}
+			return fmt.Errorf("failed to update document: %w", err)
+		}
+
+		if document.ParsedContent != nil {
+			if err := d.updateDocumentMetadata(tx, document.ID, document.ParsedContent); err != nil {
+				return err
+			}
+		}
+
+		if err := d.updateDocumentKeywords(tx, document.ID, document.MetaKeywords); err != nil {
+			return err
+		}
+
+		if err := d.updateDocumentLinks(tx, document.ID, document.Links); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (d DocumentRepository) updateDocumentMetadata(tx *gorm.DB, documentID string, parsedContent map[string]interface{}) error {
+	metadata := models.DocumentMetadata{
+		DocumentID: documentID,
+	}
+
+	if author, ok := parsedContent["author"].(string); ok {
+		metadata.Author = author
+	}
+	if publisher, ok := parsedContent["publisher"].(string); ok {
+		metadata.Publisher = publisher
+	}
+	if category, ok := parsedContent["category"].(string); ok {
+		metadata.Category = category
+	}
+	if license, ok := parsedContent["license"].(string); ok {
+		metadata.License = license
+	}
+
+	if createdDateStr, ok := parsedContent["createdDate"].(string); ok && createdDateStr != "" {
+		if parsedTime, err := d.parseDocumentDate(createdDateStr); err == nil {
+			metadata.CreatedDate = parsedTime
+		}
+	}
+
+	if err := tx.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "document_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"author", "publisher", "category", "license", "created_date"}),
+	}).Create(&metadata).Error; err != nil {
+		return fmt.Errorf("failed to update document metadata: %w", err)
+	}
+
+	return nil
+}
+
+func (d DocumentRepository) updateDocumentKeywords(tx *gorm.DB, documentID string, keywords []string) error {
+	// Delete existing keywords
+	if err := tx.Where("document_id = ?", documentID).Delete(&models.DocumentKeyword{}).Error; err != nil {
+		return fmt.Errorf("failed to delete old document keywords: %w", err)
+	}
+
+	if len(keywords) == 0 {
+		return nil
+	}
+
+	keywordModels := make([]models.DocumentKeyword, 0, len(keywords))
+	for _, keyword := range keywords {
+		if keyword != "" {
+			keywordModels = append(keywordModels, models.DocumentKeyword{
+				DocumentID: documentID,
+				Keyword:    keyword,
+			})
+		}
+	}
+
+	if len(keywordModels) > 0 {
+		if err := tx.Create(&keywordModels).Error; err != nil {
+			return fmt.Errorf("failed to save document keywords: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (d DocumentRepository) updateDocumentLinks(tx *gorm.DB, documentID string, links []string) error {
+	if err := tx.Where("source_id = ?", documentID).Delete(&models.DocumentLink{}).Error; err != nil {
+		return fmt.Errorf("failed to delete old document links: %w", err)
+	}
+
+	if len(links) == 0 {
+		return nil
+	}
+
+	linkModels := make([]models.DocumentLink, 0, len(links))
+	for _, link := range links {
+		if link != "" {
+			linkModels = append(linkModels, models.DocumentLink{
+				SourceID:  documentID,
+				TargetURL: link,
+			})
+		}
+	}
+
+	if len(linkModels) > 0 {
+		if err := tx.Create(&linkModels).Error; err != nil {
+			return fmt.Errorf("failed to save document links: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (d DocumentRepository) List(ctx context.Context, page, pageSize int) ([]*domain.Document, int, error) {
