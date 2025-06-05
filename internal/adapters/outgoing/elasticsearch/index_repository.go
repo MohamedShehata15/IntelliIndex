@@ -2,6 +2,9 @@ package elasticsearch
 
 import (
 	"context"
+	"fmt"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"io"
 	"sync"
 	"time"
 
@@ -70,6 +73,25 @@ func NewIndexRepository(client *Client) *IndexRepository {
 		client:         client,
 		refreshTickers: make(map[string]*time.Ticker),
 	}
+}
+
+// indexExists checks if an index exists in Elasticsearch
+func (i *IndexRepository) indexExists(ctx context.Context, id string) (bool, error) {
+	indexName := i.client.IndexNameWithPrefix(id)
+	res, err := i.client.PerformRequest(ctx, &esapi.IndicesExistsRequest{
+		Index: []string{indexName},
+	})
+	if err != nil {
+		return false, fmt.Errorf("error checking if index exists: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println("error closing response body:", err)
+		}
+	}(res.Body)
+
+	return res.StatusCode == 200, nil
 }
 
 // buildIndexSettings converts domain model settings to Elasticsearch settings
