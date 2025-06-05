@@ -78,3 +78,19 @@ func NewSearchQuery(queryText string) (*SearchQuery, error) {
 		UseSearchAfter:     false,
 	}, nil
 }
+
+func (q *SearchQuery) Validate() error {
+	if strings.TrimSpace(q.Query) == "" {
+		return errors.New("search query cannot be empty")
+	}
+	if q.Page < 1 {
+		return errors.New("page must be greater than 0")
+	}
+	if q.PageSize < 1 {
+		return errors.New("pageSize must be greater than 0")
+	}
+	if q.PageSize > 100 {
+		return errors.New("pageSize cannot exeed 100")
+	}
+	return nil
+}
