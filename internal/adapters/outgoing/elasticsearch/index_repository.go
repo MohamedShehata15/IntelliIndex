@@ -359,3 +359,13 @@ func getIntFromMap(m map[string]interface{}, key string) int {
 	}
 	return 0
 }
+
+// getStringFromMap safely extracts a string value from a map
+func getStringFromMap(m map[string]interface{}, key string) string {
+	if val, ok := m[key]; ok {
+		if strVal, ok := val.(string); ok {
+			return strVal
+		}
+	}
+	return ""
+}
