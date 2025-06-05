@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 )
 
 // IndexMapping represents the structure of an Elasticsearch index mapping
