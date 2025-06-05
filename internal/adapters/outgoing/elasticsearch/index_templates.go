@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"io"
+	"net/http"
 	"strings"
 )
 
@@ -286,4 +287,23 @@ func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping Inde
 	}(res.Body)
 
 	return nil
+}
+
+// IndexExists checks if an index exists
+func (c *Client) IndexExists(ctx context.Context, indexName string) (bool, error) {
+	fullIndexName := c.IndexNameWithPrefix(indexName)
+	res, err := c.PerformRequest(ctx, &esapi.IndicesExistsRequest{
+		Index: []string{fullIndexName},
+	})
+	if err != nil {
+		return false, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println("error closing response body:", err)
+		}
+	}(res.Body)
+
+	return res.StatusCode == http.StatusOK, nil
 }
