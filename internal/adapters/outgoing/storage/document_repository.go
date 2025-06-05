@@ -545,6 +545,12 @@ func (d DocumentRepository) applyScoring(doc *domain.Document, query *domain.Sea
 }
 
 func (d DocumentRepository) CountByIndexID(ctx context.Context, indexID string) (int, error) {
-	//TODO implement me
-	panic("implement me")
+	if indexID == "" {
+		return 0, errors.New("index ID annot be empty")
+	}
+	var count int64
+	if err := d.db.WithContext(ctx).Model(&models.Document{}).Where("index_id = ?", indexID).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("failed to count documents by index ID: %w", err)
+	}
+	return int(count), nil
 }
