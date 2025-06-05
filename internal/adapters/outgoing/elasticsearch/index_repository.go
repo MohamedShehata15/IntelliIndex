@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -174,6 +175,56 @@ func (i *IndexRepository) SetupAutoRefresh(ctx context.Context, id string) error
 	i.refreshMutex.Lock()
 	i.refreshTickers[id] = ticker
 	i.refreshMutex.Unlock()
+
+	return nil
+}
+
+// ensureMetadataIndexExists creates the indices metadata index if it doesn't exist
+func (r *IndexRepository) ensureMetadataIndexExists(ctx context.Context) error {
+	indexName := r.client.IndexNameWithPrefix("indices-metadata")
+	exists, err := r.client.IndexExists(ctx, "indices-metadata")
+	if err != nil {
+		return fmt.Errorf("error checking if metadata index exists: %w", err)
+	}
+
+	if exists {
+		return nil // Index already exists
+	}
+
+	body := map[string]interface{}{
+		"settings": map[string]interface{}{
+			"number_of_shards":   1,
+			"number_of_replicas": 0,
+		},
+		"mappings": map[string]interface{}{
+			"properties": map[string]interface{}{
+				"Name": map[string]interface{}{
+					"type": "text",
+					"fields": map[string]interface{}{
+						"keyword": map[string]interface{}{
+							"type":         "keyword",
+							"ignore_above": 256,
+						},
+					},
+				},
+				"Description":     map[string]interface{}{"type": "text"},
+				"Status":          map[string]interface{}{"type": "keyword"},
+				"Created":         map[string]interface{}{"type": "date"},
+				"LastUpdated":     map[string]interface{}{"type": "date"},
+				"Settings":        map[string]interface{}{"type": "object"},
+				"DocumentMapping": map[string]interface{}{"type": "object"},
+			},
+		},
+	}
+
+	res, err := r.client.PerformRequest(ctx, &esapi.IndicesCreateRequest{
+		Index: indexName,
+		Body:  bytes.NewReader(mustMarshalJSON(body)),
+	})
+	if err != nil {
+		return fmt.Errorf("error creating metadata index: %w", err)
+	}
+	defer res.Body.Close()
 
 	return nil
 }
