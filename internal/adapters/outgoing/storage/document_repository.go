@@ -410,8 +410,39 @@ func (d DocumentRepository) updateDocumentLinks(tx *gorm.DB, documentID string, 
 }
 
 func (d DocumentRepository) List(ctx context.Context, page, pageSize int) ([]*domain.Document, int, error) {
-	//TODO implement me
-	panic("implement me")
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	offset := (page - 1) * pageSize
+
+	var count int64
+	if err := d.db.WithContext(ctx).Model(&models.Document{}).Count(&count).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count documents: %w", err)
+	}
+
+	var dbDocs []models.Document
+	result := d.db.WithContext(ctx).
+		Preload("DocumentMetadata").
+		Preload("DocumentLinks").
+		Preload("DocumentKeywords").
+		Offset(offset).
+		Limit(pageSize).
+		Order("last_crawled desc").
+		Find(&dbDocs)
+	if result.Error != nil {
+		return nil, 0, fmt.Errorf("failed to list documents: %w", result.Error)
+	}
+	documents := make([]*domain.Document, len(dbDocs))
+	for i, dbDoc := range dbDocs {
+		documents[i] = dbDoc.ToDomain()
+	}
+	return documents, int(count), nil
 }
 
 func (d DocumentRepository) Search(ctx context.Context, query *domain.SearchQuery) ([]*domain.Document, int, error) {
