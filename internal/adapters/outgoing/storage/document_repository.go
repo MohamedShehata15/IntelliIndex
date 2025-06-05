@@ -203,8 +203,23 @@ func (d DocumentRepository) GetByID(ctx context.Context, id string) (*domain.Doc
 }
 
 func (d DocumentRepository) GetByURL(ctx context.Context, url string) (*domain.Document, error) {
-	//TODO implement me
-	panic("implement me")
+	if url == "" {
+		return nil, errors.New("document URL cannot be empty")
+	}
+
+	var dbDoc models.Document
+	result := d.db.WithContext(ctx).
+		Preload("DocumentMetadata").
+		Preload("DocumentLinks").
+		Preload("DocumentKeywords").
+		First(&dbDoc, "url = ?", url)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get document by URL: ", result.Error)
+	}
+	return dbDoc.ToDomain(), nil
 }
 
 func (d DocumentRepository) Delete(ctx context.Context, id string) error {
