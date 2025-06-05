@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"io"
+	"strconv"
 	"sync"
 	"time"
 
@@ -338,4 +339,23 @@ func getString(m map[string]interface{}, key string) string {
 		}
 	}
 	return ""
+}
+
+// getIntFromMap safely extracts an int value from a map
+func getIntFromMap(m map[string]interface{}, key string) int {
+	if val, ok := m[key]; ok {
+		switch v := val.(type) {
+		case int:
+			return v
+		case int64:
+			return int(v)
+		case float64:
+			return int(v)
+		case string:
+			if i, err := strconv.Atoi(v); err == nil {
+				return i
+			}
+		}
+	}
+	return 0
 }
