@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"io"
 	"strings"
 )
 
@@ -259,6 +260,30 @@ func (c *Client) CreateIndexTemplate(ctx context.Context, name string, mapping I
 		return err
 	}
 	defer res.Body.Close()
+
+	return nil
+}
+
+// CreateIndex creates a new index with given mapping
+func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping IndexMapping) error {
+	body, err := json.Marshal(mapping)
+	if err != nil {
+		return fmt.Errorf("error marshaling index mapping: %w", err)
+	}
+	fullIndexName := c.IndexNameWithPrefix(indexName)
+	res, err := c.PerformRequest(ctx, &esapi.IndicesCreateRequest{
+		Index: fullIndexName,
+		Body:  strings.NewReader(string(body)),
+	})
+	if err != nil {
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(res.Body)
 
 	return nil
 }
