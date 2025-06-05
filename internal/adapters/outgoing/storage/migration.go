@@ -1,6 +1,13 @@
 package storage
 
-import "gorm.io/gorm"
+import (
+	"fmt"
+	"log"
+
+	"gorm.io/gorm"
+
+	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/storage/models"
+)
 
 // MigrationHandler handles database migrations
 type MigrationHandler struct {
@@ -12,4 +19,27 @@ func NewMigrationHandler(client *Client) *MigrationHandler {
 	return &MigrationHandler{
 		db: client.DB,
 	}
+}
+
+// RunMigrations runs all migrations for the database
+func (m *MigrationHandler) RunMigrations() error {
+	log.Println("Running database migrations...")
+	dbModels := []interface{}{
+		&models.Document{},
+		&models.DocumentMetadata{},
+		&models.DocumentKeyword{},
+		&models.DocumentLink{},
+		&models.DocumentTag{},
+		&models.Index{},
+	}
+
+	for _, dbModel := range dbModels {
+		if err := m.db.AutoMigrate(dbModel); err != nil {
+			if err := m.db.AutoMigrate(dbModel); err != nil {
+				return fmt.Errorf("failed to migrate %T: %w", dbModel, err)
+			}
+		}
+	}
+	log.Println("Database migrations completed successfully")
+	return nil
 }
