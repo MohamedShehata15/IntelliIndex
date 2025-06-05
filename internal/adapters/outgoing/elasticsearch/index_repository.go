@@ -71,3 +71,99 @@ func NewIndexRepository(client *Client) *IndexRepository {
 		refreshTickers: make(map[string]*time.Ticker),
 	}
 }
+
+// buildIndexSettings converts domain model settings to Elasticsearch settings
+func (i *IndexRepository) buildIndexSettings(index *domain.Index) (map[string]interface{}, map[string]interface{}, error) {
+	settings := createBasicSettings(index)
+	configureAnalysisSettings(index, settings)
+	mappings := createDefaultMappings()
+	return settings, mappings, nil
+}
+
+// createBasicSettings creates the basic index settings
+func createBasicSettings(index *domain.Index) map[string]interface{} {
+	settings := map[string]interface{}{
+		"number_of_shards":   index.Settings.Shards,
+		"number_of_replicas": index.Settings.Replicas,
+	}
+	if index.Settings.RefreshInterval != "" {
+		settings["refresh_interval"] = index.Settings.RefreshInterval
+	}
+	return settings
+}
+
+// configureAnalysisSettings adds language and stopword configurations
+func configureAnalysisSettings(index *domain.Index, settings map[string]interface{}) {
+	needsAnalysis := len(index.Settings.Stopwords) > 0 || len(index.Settings.Languages) > 0
+
+	if needsAnalysis {
+		analysis := map[string]interface{}{}
+
+		if len(index.Settings.Languages) > 0 {
+			configureLanguageAnalyzers(index.Settings.Languages, analysis)
+		}
+
+		if len(index.Settings.Stopwords) > 0 {
+			configureStopwords(index.Settings.Stopwords, analysis)
+		}
+
+		settings["analysis"] = analysis
+	}
+	mergeCustomAnalyzerSettings(index.Settings.AnalyzerSettings, settings)
+}
+
+// configureLanguageAnalyzers adds language-specific analyzers
+func configureLanguageAnalyzers(languages []string, analysis map[string]interface{}) {
+	analyzers := map[string]interface{}{}
+	for _, lang := range languages {
+		analyzers[lang+"_analyzer"] = map[string]interface{}{
+			"type":      "standard",
+			"stopwords": "_" + lang + "_",
+		}
+	}
+	analysis["analyzer"] = analyzers
+}
+
+// configureStopwords adds custom stopword configuration
+func configureStopwords(stopwords []string, analysis map[string]interface{}) {
+	analysis["filter"] = map[string]interface{}{
+		"custom_stop": map[string]interface{}{
+			"type":      "stop",
+			"stopwords": stopwords,
+		},
+	}
+}
+
+// mergeCustomAnalyzerSettings adds user-defined analyzer settings
+func mergeCustomAnalyzerSettings(customSettings map[string]interface{}, settings map[string]interface{}) {
+	if customSettings == nil {
+		return
+	}
+	if analysisSettings, ok := settings["analysis"].(map[string]interface{}); ok {
+		for k, v := range customSettings {
+			analysisSettings[k] = v
+		}
+	} else {
+		settings["analysis"] = customSettings
+	}
+}
+
+// createDefaultMappings creates the default index mappings
+func createDefaultMappings() map[string]interface{} {
+	return map[string]interface{}{
+		"properties": map[string]interface{}{
+			"Name": map[string]interface{}{
+				"type": "text",
+				"fields": map[string]interface{}{
+					"keyword": map[string]interface{}{
+						"type":         "keyword",
+						"ignore_above": 256,
+					},
+				},
+			},
+			"Description": map[string]interface{}{
+				"type": "text",
+			},
+		},
+	}
+}
