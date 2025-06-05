@@ -94,3 +94,11 @@ func (q *SearchQuery) Validate() error {
 	}
 	return nil
 }
+
+func (q *SearchQuery) Offset() int {
+	return (q.Page - 1) * q.PageSize
+}
+
+func (q *SearchQuery) Limit() int {
+	return q.PageSize
+}
