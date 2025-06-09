@@ -21,3 +21,10 @@ func Bootstrap() *Container {
 	})
 	return defaultContainer
 }
+
+// ResetContainer clears all instances from the container but keeps factories.
+func ResetContainer() {
+	if defaultContainer != nil {
+		defaultContainer.Reset()
+	}
+}
