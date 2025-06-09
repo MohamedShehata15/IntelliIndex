@@ -87,3 +87,11 @@ func (c *Container) MustResolve(name string) interface{} {
 	}
 	return instance
 }
+
+// Reset clears all instances but keeps factories.
+func (c *Container) Reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.instances = make(map[string]interface{})
+}
