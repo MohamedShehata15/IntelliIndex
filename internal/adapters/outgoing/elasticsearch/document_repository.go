@@ -1,13 +1,16 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/elasticsearch/models"
 	"strings"
 
+	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/google/uuid"
+
+	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/elasticsearch/models"
 	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
 	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
 )
@@ -61,8 +64,36 @@ func (d DocumentRepository) GetByID(ctx context.Context, id string) (*domain.Doc
 }
 
 func (d DocumentRepository) GetByURL(ctx context.Context, url string) (*domain.Document, error) {
-	//TODO implement me
-	panic("implement me")
+	if url == "" {
+		return nil, errors.New("document URL cannot be empty")
+	}
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"term": map[string]interface{}{
+				"url.keyword": url,
+			},
+		},
+	}
+	res, err := d.client.PerformRequest(ctx, &esapi.SearchRequest{
+		Index: []string{d.client.IndexNameWithPrefix(DocumentIndex)},
+		Body:  bytes.NewReader(mustMarshalJSON(query)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error parsing for document by URL: %w", err)
+	}
+	var searchResult map[string]interface{}
+	if err := parseResponse(res.Body, &searchResult); err != nil {
+		return nil, fmt.Errorf("error parsing search response: %w", err)
+	}
+	hitsObj := searchResult["hits"].(map[string]interface{})
+	hitsTotal := int(hitsObj["total"].(map[string]interface{})["value"].(float64))
+	if hitsTotal == 0 {
+		return nil, nil
+	}
+	hits := hitsObj["hits"].([]interface{})
+	hit := hits[0].(map[string]interface{})
+	doc := hit["_source"].(*models.Document)
+	return doc.ToDomain(), nil
 }
 
 func (d DocumentRepository) Delete(ctx context.Context, id string) error {
