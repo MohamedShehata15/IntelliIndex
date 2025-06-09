@@ -28,23 +28,23 @@ func (c *Client) IndexDocument(ctx context.Context, indexName, docID string, doc
 	return nil
 }
 
-func (c *Client) GetDocument(ctx context.Context, indexName, docID string) (models.Document, error) {
+func (c *Client) GetDocument(ctx context.Context, indexName, docID string) (*models.Document, error) {
 	fullIndexName := c.IndexNameWithPrefix(indexName)
 	res, err := c.PerformRequest(ctx, &esapi.GetRequest{
 		Index:      fullIndexName,
 		DocumentID: docID,
 	})
 	if err != nil {
-		return models.Document{}, err
+		return nil, err
 	}
 	var response map[string]interface{}
 	if err := parseResponse(res.Body, &response); err != nil {
-		return models.Document{}, fmt.Errorf("error parsing get response: %w", err)
+		return nil, fmt.Errorf("error parsing get response: %w", err)
 	}
 	if found, ok := response["found"].(bool); !ok || !found {
-		return models.Document{}, fmt.Errorf("document not found")
+		return nil, fmt.Errorf("document not found")
 	}
-	return response["_source"].(models.Document), err
+	return response["_source"].(*models.Document), err
 }
 
 func (c *Client) DeleteDocument(ctx context.Context, indexName, docID string) error {
