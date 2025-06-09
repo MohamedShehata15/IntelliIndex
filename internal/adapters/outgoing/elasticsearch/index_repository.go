@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -182,8 +183,39 @@ func (i IndexRepository) List(ctx context.Context) ([]*domain.Index, error) {
 }
 
 func (i IndexRepository) Delete(ctx context.Context, id string) error {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return errors.New("index ID cannot be empty")
+	}
+	index, err := i.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("error checking if index exists: %w", err)
+	}
+	if index == nil {
+		return fmt.Errorf("index with ID %s does not exist", id)
+	}
+	index.UpdateStatus(domain.IndexStatusDeleting)
+	if err := i.saveIndexMetadata(ctx, index); err != nil {
+		return fmt.Errorf("error updating index status: %w", err)
+	}
+	i.StopAutoRefresh(id)
+
+	indexName := i.client.IndexNameWithPrefix(id)
+	_, err = i.client.PerformRequest(ctx, &esapi.IndicesDeleteRequest{
+		Index: []string{indexName},
+	})
+	if err != nil && !strings.Contains(err.Error(), "index_not_found_exception") {
+		return fmt.Errorf("error deleting index: %w", err)
+	}
+
+	_, err = i.client.PerformRequest(ctx, &esapi.DeleteRequest{
+		Index:      i.client.IndexNameWithPrefix("indices-metadata"),
+		DocumentID: id,
+	})
+	if err != nil && !strings.Contains(err.Error(), "not_found") {
+		return fmt.Errorf("error deleting index metadata: %w", err)
+	}
+
+	return nil
 }
 
 func (i IndexRepository) Update(ctx context.Context, index *domain.Index) error {
