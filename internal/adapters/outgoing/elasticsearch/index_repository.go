@@ -324,6 +324,30 @@ func (i *IndexRepository) indexToMap(index *domain.Index) (map[string]interface{
 	return indexMap, nil
 }
 
+// saveIndexMetadata saves the index metadata to a special indices metadata index
+func (i *IndexRepository) saveIndexMetadata(ctx context.Context, index *domain.Index) error {
+	if err := i.ensureMetadataIndexExists(ctx); err != nil {
+		return fmt.Errorf("error ensuring metadata index exists: %w", err)
+	}
+
+	indexMap, err := i.indexToMap(index)
+	if err != nil {
+		return fmt.Errorf("error converting index to map: %w", err)
+	}
+
+	res, err := i.client.PerformRequest(ctx, &esapi.IndexRequest{
+		Index:      i.client.IndexNameWithPrefix("indices-metadata"),
+		DocumentID: index.ID,
+		Body:       bytes.NewReader(mustMarshalJSON(indexMap)),
+	})
+	if err != nil {
+		return fmt.Errorf("error saving index metadata: %w", err)
+	}
+	defer res.Body.Close()
+
+	return nil
+}
+
 // buildIndexSettings converts domain model settings to Elasticsearch settings
 func (i *IndexRepository) buildIndexSettings(index *domain.Index) (map[string]interface{}, map[string]interface{}, error) {
 	settings := createBasicSettings(index)
