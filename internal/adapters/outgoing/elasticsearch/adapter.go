@@ -50,3 +50,8 @@ func RegisterElasticsearchAdapters(container *di.Container, cfg *config.ElasticC
 func GetDocumentRepository(container *di.Container) outgoing.DocumentRepository {
 	return container.MustResolve("documentRepository").(outgoing.DocumentRepository)
 }
+
+// GetIndexRepository retrieves the index repository from the container
+func GetIndexRepository(container *di.Container) outgoing.IndexRepository {
+	return container.MustResolve("indexRepository").(outgoing.IndexRepository)
+}
