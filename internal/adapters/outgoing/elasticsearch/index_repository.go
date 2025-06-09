@@ -3,7 +3,6 @@ package elasticsearch
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -115,16 +114,10 @@ func (i IndexRepository) GetByName(ctx context.Context, name string) (*domain.In
 	if err != nil {
 		return nil, fmt.Errorf("error searching for index: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Printf("error closing response body: %v\n", err)
-		}
-	}(res.Body)
 
 	var searchResult map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
-		return nil, fmt.Errorf("error parsing search response: %w", err)
+	if err := ParseResponse(res.Body, &searchResult); err != nil {
+		return nil, err
 	}
 
 	hitsObj := searchResult["hits"].(map[string]interface{})
@@ -139,8 +132,53 @@ func (i IndexRepository) GetByName(ctx context.Context, name string) (*domain.In
 }
 
 func (i IndexRepository) List(ctx context.Context) ([]*domain.Index, error) {
-	//TODO implement me
-	panic("implement me")
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+		"size": 100,
+		"sort": []map[string]interface{}{
+			{"LastUpdated": map[string]interface{}{"order": "desc"}},
+		},
+	}
+	res, err := i.client.PerformRequest(ctx, &esapi.SearchRequest{
+		Index: []string{i.client.IndexNameWithPrefix("indices-metadata")},
+		Body:  bytes.NewReader(mustMarshalJSON(query)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error listing indices: %w", err)
+	}
+
+	// Parse response
+	var searchResult map[string]interface{}
+	if err := ParseResponse(res.Body, &searchResult); err != nil {
+		return nil, err
+	}
+
+	hitsObj := searchResult["hits"].(map[string]interface{})
+	hits := hitsObj["hits"].([]interface{})
+
+	indices := make([]*domain.Index, 0, len(hits))
+	for _, hit := range hits {
+		hitMap := hit.(map[string]interface{})
+		source := hitMap["_source"].(map[string]interface{})
+		id := hitMap["_id"].(string)
+
+		index, err := i.mapToIndex(source)
+		if err != nil {
+			return nil, fmt.Errorf("error converting map to index: %w", err)
+		}
+		index.ID = id
+
+		count, err := i.getDocumentCount(ctx, id)
+		if err == nil {
+			index.DocumentCount = count
+		}
+
+		indices = append(indices, index)
+	}
+
+	return indices, nil
 }
 
 func (i IndexRepository) Delete(ctx context.Context, id string) error {
@@ -459,15 +497,18 @@ func (i *IndexRepository) getIndexMetadata(ctx context.Context, id string) (*dom
 	if err != nil {
 		return nil, fmt.Errorf("error getting index metadata: %w", err)
 	}
-	defer res.Body.Close()
 
 	if res.StatusCode == 404 {
+		// Close the response body for 404 case
+		if err := res.Body.Close(); err != nil {
+			fmt.Printf("error closing response body: %v\n", err)
+		}
 		return nil, nil // Return nil without error for not found
 	}
 
 	var response map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
-		return nil, fmt.Errorf("error parsing metadata response: %w", err)
+	if err := ParseResponse(res.Body, &response); err != nil {
+		return nil, err
 	}
 
 	source, ok := response["_source"].(map[string]interface{})
@@ -502,11 +543,10 @@ func (i *IndexRepository) getDocumentCount(ctx context.Context, id string) (int,
 	if err != nil {
 		return 0, fmt.Errorf("error counting documents: %w", err)
 	}
-	defer res.Body.Close()
 
 	var countResult map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&countResult); err != nil {
-		return 0, fmt.Errorf("error parsing count response: %w", err)
+	if err := ParseResponse(res.Body, &countResult); err != nil {
+		return 0, err
 	}
 
 	count := int(countResult["count"].(float64))
