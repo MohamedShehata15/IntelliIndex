@@ -10,3 +10,11 @@ type Container struct {
 }
 
 type factory func() (interface{}, error)
+
+// NewContainer creates a new dependency injection container.
+func NewContainer() *Container {
+	return &Container{
+		instances: make(map[string]interface{}),
+		factories: make(map[string]factory),
+	}
+}
