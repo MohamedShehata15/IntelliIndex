@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
@@ -91,4 +92,32 @@ func (c *Client) DocumentExists(ctx context.Context, indexName, docID string) (b
 	}
 	defer closeBody(res.Body)
 	return res.StatusCode == http.StatusOK, nil
+}
+
+func (c *Client) CountDocument(ctx context.Context, indexName string, query map[string]interface{}) (int64, error) {
+	fullIndexName := c.IndexNameWithPrefix(indexName)
+	var body io.Reader
+	if query != nil {
+		bodyJSON, err := json.Marshal(query)
+		if err != nil {
+			return 0, fmt.Errorf("error marshaling query: %w", err)
+		}
+		body = bytes.NewReader(bodyJSON)
+	}
+	res, err := c.PerformRequest(ctx, &esapi.CountRequest{
+		Index: []string{fullIndexName},
+		Body:  body,
+	})
+	if err != nil {
+		return 0, err
+	}
+	var countResponse map[string]interface{}
+	if err := parseResponse(res.Body, &countResponse); err != nil {
+		return 0, fmt.Errorf("error parsing count response: %w", err)
+	}
+	count, ok := countResponse["count"].(float64)
+	if !ok {
+		return 0, fmt.Errorf("error parsing count response format")
+	}
+	return int64(count), nil
 }
