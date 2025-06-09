@@ -97,8 +97,45 @@ func (i IndexRepository) GetByID(ctx context.Context, id string) (*domain.Index,
 }
 
 func (i IndexRepository) GetByName(ctx context.Context, name string) (*domain.Index, error) {
-	//TODO implement me
-	panic("implement me")
+	if name == "" {
+		return nil, fmt.Errorf("index name cannot be empty")
+	}
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"term": map[string]interface{}{
+				"Name.keyword": name,
+			},
+		},
+		"size": 1,
+	}
+	res, err := i.client.PerformRequest(ctx, &esapi.SearchRequest{
+		Index: []string{i.client.IndexNameWithPrefix("indices-metadata")},
+		Body:  bytes.NewReader(mustMarshalJSON(query)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error searching for index: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("error closing response body: %v\n", err)
+		}
+	}(res.Body)
+
+	var searchResult map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
+		return nil, fmt.Errorf("error parsing search response: %w", err)
+	}
+
+	hitsObj := searchResult["hits"].(map[string]interface{})
+	hitsTotal := int(hitsObj["total"].(map[string]interface{})["value"].(float64))
+	if hitsTotal == 0 {
+		return nil, nil
+	}
+	hits := hitsObj["hits"].([]interface{})
+	hit := hits[0].(map[string]interface{})
+	id := hit["_id"].(string)
+	return i.GetByID(ctx, id)
 }
 
 func (i IndexRepository) List(ctx context.Context) ([]*domain.Index, error) {
