@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 
@@ -77,4 +78,17 @@ func (c *Client) UpdateDocument(ctx context.Context, indexName, docID string, do
 	}
 	defer closeBody(res.Body)
 	return nil
+}
+
+func (c *Client) DocumentExists(ctx context.Context, indexName, docID string) (bool, error) {
+	fullIndexName := c.IndexNameWithPrefix(indexName)
+	res, err := c.PerformRequest(ctx, &esapi.ExistsRequest{
+		Index:      fullIndexName,
+		DocumentID: docID,
+	})
+	if err != nil {
+		return false, err
+	}
+	defer closeBody(res.Body)
+	return res.StatusCode == http.StatusOK, nil
 }
