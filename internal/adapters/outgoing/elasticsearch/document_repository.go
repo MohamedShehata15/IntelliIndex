@@ -185,6 +185,27 @@ func (d DocumentRepository) Search(ctx context.Context, query *domain.SearchQuer
 }
 
 func (d DocumentRepository) CountByIndexID(ctx context.Context, indexID string) (int, error) {
-	//TODO implement me
-	panic("implement me")
+	if indexID == "" {
+		return 0, errors.New("index ID cannot be empty")
+	}
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"term": map[string]interface{}{
+				"index_id.keyword": indexID,
+			},
+		},
+	}
+	res, err := d.client.PerformRequest(ctx, &esapi.SearchRequest{
+		Index: []string{d.client.IndexNameWithPrefix(DocumentIndex)},
+		Body:  bytes.NewReader(mustMarshalJSON(query)),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("error parsing for documents: %w", err)
+	}
+	var countResult map[string]interface{}
+	if err := parseResponse(res.Body, &countResult); err != nil {
+		return 0, fmt.Errorf("error parsing count response: %w", err)
+	}
+	count := int(countResult["count"].(float64))
+	return count, nil
 }
