@@ -43,3 +43,16 @@ func (c *Client) GetDocument(ctx context.Context, indexName, docID string) (mode
 	}
 	return response["_source"].(models.Document), err
 }
+
+func (c *Client) DeleteDocument(ctx context.Context, indexName, docID string) error {
+	fullIndexName := c.IndexNameWithPrefix(indexName)
+	res, err := c.PerformRequest(ctx, &esapi.DeleteRequest{
+		Index:      fullIndexName,
+		DocumentID: docID,
+	})
+	if err != nil {
+		return err
+	}
+	defer closeBody(res.Body)
+	return nil
+}
