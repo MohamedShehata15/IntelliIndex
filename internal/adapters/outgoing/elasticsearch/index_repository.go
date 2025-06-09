@@ -117,7 +117,7 @@ func (i IndexRepository) GetByName(ctx context.Context, name string) (*domain.In
 	}
 
 	var searchResult map[string]interface{}
-	if err := ParseResponse(res.Body, &searchResult); err != nil {
+	if err := parseResponse(res.Body, &searchResult); err != nil {
 		return nil, err
 	}
 
@@ -152,7 +152,7 @@ func (i IndexRepository) List(ctx context.Context) ([]*domain.Index, error) {
 
 	// Parse response
 	var searchResult map[string]interface{}
-	if err := ParseResponse(res.Body, &searchResult); err != nil {
+	if err := parseResponse(res.Body, &searchResult); err != nil {
 		return nil, err
 	}
 
@@ -558,7 +558,7 @@ func (i *IndexRepository) getIndexMetadata(ctx context.Context, id string) (*dom
 	}
 
 	var response map[string]interface{}
-	if err := ParseResponse(res.Body, &response); err != nil {
+	if err := parseResponse(res.Body, &response); err != nil {
 		return nil, err
 	}
 
@@ -596,7 +596,7 @@ func (i *IndexRepository) getDocumentCount(ctx context.Context, id string) (int,
 	}
 
 	var countResult map[string]interface{}
-	if err := ParseResponse(res.Body, &countResult); err != nil {
+	if err := parseResponse(res.Body, &countResult); err != nil {
 		return 0, err
 	}
 
