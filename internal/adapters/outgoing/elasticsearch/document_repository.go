@@ -107,8 +107,27 @@ func (d DocumentRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (d DocumentRepository) Update(ctx context.Context, document *domain.Document) error {
-	//TODO implement me
-	panic("implement me")
+	if document == nil {
+		return errors.New("document cannot be nil")
+	}
+	if document.ID == "" {
+		return errors.New("document ID cannot be empty")
+	}
+	if err := document.Validate(); err != nil {
+		return fmt.Errorf("invalid document: %w", err)
+	}
+	exists, err := d.client.DocumentExists(ctx, DocumentIndex, document.ID)
+	if err != nil {
+		return fmt.Errorf("error checking if document exists: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("document with ID %s does not exist", document.ID)
+	}
+	modelDocument := models.FromDomain(document)
+	if err := d.client.UpdateDocument(ctx, DocumentIndex, document.ID, modelDocument); err != nil {
+		return fmt.Errorf("error updating document: %w", err)
+	}
+	return nil
 }
 
 func (d DocumentRepository) List(ctx context.Context, page, pageSize int) ([]*domain.Document, int, error) {
