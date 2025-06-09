@@ -78,3 +78,12 @@ func (c *Container) createAndStoreInstance(name string) (interface{}, error) {
 	c.instances[name] = instance
 	return instance, nil
 }
+
+// MustResolve is like Resolve but panics on error.
+func (c *Container) MustResolve(name string) interface{} {
+	instance, err := c.Resolve(name)
+	if err != nil {
+		panic(err)
+	}
+	return instance
+}
