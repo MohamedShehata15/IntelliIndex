@@ -235,6 +235,62 @@ func (i *IndexRepository) ensureMetadataIndexExists(ctx context.Context) error {
 	return nil
 }
 
+// mapToIndex converts an Elasticsearch source map to a domain Index
+func (i *IndexRepository) mapToIndex(source map[string]interface{}) (*domain.Index, error) {
+	index := &domain.Index{
+		Name:            getString(source, "Name"),
+		Description:     getString(source, "Description"),
+		Status:          domain.IndexStatus(getString(source, "Status")),
+		DocumentMapping: make(map[string]string),
+	}
+
+	if createdAt, ok := source["CreatedAt"].(string); ok {
+		if ts, err := time.Parse(time.RFC3339, createdAt); err == nil {
+			index.CreatedAt = ts
+		}
+	}
+
+	if lastUpdated, ok := source["LastUpdated"].(string); ok {
+		if ts, err := time.Parse(time.RFC3339, lastUpdated); err == nil {
+			index.LastUpdated = ts
+		}
+	}
+
+	if settingsMap, ok := source["Settings"].(map[string]interface{}); ok {
+		index.Settings.Shards = getIntFromMap(settingsMap, "Shards")
+		index.Settings.Replicas = getIntFromMap(settingsMap, "Replicas")
+		index.Settings.RefreshInterval = getStringFromMap(settingsMap, "RefreshInterval")
+
+		// Parse stopwords
+		if stopwords, ok := settingsMap["Stopwords"].([]interface{}); ok {
+			for _, sw := range stopwords {
+				if stopword, ok := sw.(string); ok {
+					index.Settings.Stopwords = append(index.Settings.Stopwords, stopword)
+				}
+			}
+		}
+
+		// Parse languages
+		if languages, ok := settingsMap["Languages"].([]interface{}); ok {
+			for _, lang := range languages {
+				if language, ok := lang.(string); ok {
+					index.Settings.Languages = append(index.Settings.Languages, language)
+				}
+			}
+		}
+	}
+
+	if mappingMap, ok := source["DocumentMapping"].(map[string]interface{}); ok {
+		for k, v := range mappingMap {
+			if valStr, ok := v.(string); ok {
+				index.DocumentMapping[k] = valStr
+			}
+		}
+	}
+
+	return index, nil
+}
+
 // buildIndexSettings converts domain model settings to Elasticsearch settings
 func (i *IndexRepository) buildIndexSettings(index *domain.Index) (map[string]interface{}, map[string]interface{}, error) {
 	settings := createBasicSettings(index)
