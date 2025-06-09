@@ -15,8 +15,8 @@ func mustMarshalJSON(v interface{}) []byte {
 	return data
 }
 
-// CloseBody safely closes a response body and logs any errors
-func CloseBody(body io.ReadCloser) {
+// closeBody safely closes a response body and logs any errors
+func closeBody(body io.ReadCloser) {
 	if body == nil {
 		return
 	}
@@ -27,9 +27,9 @@ func CloseBody(body io.ReadCloser) {
 	}
 }
 
-// ParseResponse is a generic helper function that parses an Elasticsearch response body into a given interface
-func ParseResponse(body io.ReadCloser, result interface{}) error {
-	defer CloseBody(body)
+// parseResponse is a generic helper function that parses an Elasticsearch response body into a given interface
+func parseResponse(body io.ReadCloser, result interface{}) error {
+	defer closeBody(body)
 
 	if err := json.NewDecoder(body).Decode(result); err != nil {
 		return fmt.Errorf("error parsing response: %w", err)
