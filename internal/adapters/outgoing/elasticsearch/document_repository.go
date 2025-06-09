@@ -97,8 +97,13 @@ func (d DocumentRepository) GetByURL(ctx context.Context, url string) (*domain.D
 }
 
 func (d DocumentRepository) Delete(ctx context.Context, id string) error {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return errors.New("document ID cannot be empty")
+	}
+	if err := d.client.DeleteDocument(ctx, DocumentIndex, id); err != nil {
+		return fmt.Errorf("error deleting document: %w", err)
+	}
+	return nil
 }
 
 func (d DocumentRepository) Update(ctx context.Context, document *domain.Document) error {
