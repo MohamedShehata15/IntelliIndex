@@ -38,3 +38,99 @@ type Keyword struct {
 	Category         string  `json:"category"`
 	Position         int     `json:"position"`
 }
+
+// FromDomain converts a domain Document to an Elasticsearch Document
+func FromDomain(d *domain.Document) *Document {
+	if d == nil {
+		return nil
+	}
+
+	esDoc := &Document{
+		ID:                 d.ID,
+		URL:                d.URL,
+		Title:              d.Title,
+		Content:            d.Content,
+		ContentType:        d.ContentType,
+		ContentFingerprint: d.ContentFingerprint,
+		LastCrawled:        d.LastCrawled,
+		LastModified:       d.LastModified,
+		Lang:               d.Lang,
+		MetaDesc:           d.MetaDesc,
+		MetaKeywords:       d.MetaKeywords,
+		Links:              d.Links,
+		StatusCode:         d.StatusCode,
+		ContentLength:      d.ContentLength,
+		ImportanceRank:     d.ImportanceRank,
+		IndexID:            d.IndexID,
+		IsDuplicate:        d.IsDuplicate,
+		OriginalDocID:      d.OriginalDocID,
+		VersionCount:       d.VersionCount,
+		CurrentVersion:     d.CurrentVersion,
+		ParsedContent:      d.ParsedContent,
+		Score:              d.Score,
+	}
+
+	// Convert enhanced keywords
+	if len(d.EnhancedKeywords) > 0 {
+		esDoc.EnhancedKeywords = make([]Keyword, len(d.EnhancedKeywords))
+		for i, kw := range d.EnhancedKeywords {
+			esDoc.EnhancedKeywords[i] = Keyword{
+				Text:             kw.Text,
+				Score:            kw.Score,
+				IsDomainSpecific: kw.IsDomainSpecific,
+				Category:         kw.Category,
+				Position:         kw.Position,
+			}
+		}
+	}
+
+	return esDoc
+}
+
+// ToDomain converts an Elasticsearch Document to a domain Document
+func (d *Document) ToDomain() *domain.Document {
+	if d == nil {
+		return nil
+	}
+
+	domainDoc := &domain.Document{
+		ID:                 d.ID,
+		URL:                d.URL,
+		Title:              d.Title,
+		Content:            d.Content,
+		ContentType:        d.ContentType,
+		ContentFingerprint: d.ContentFingerprint,
+		LastCrawled:        d.LastCrawled,
+		LastModified:       d.LastModified,
+		Lang:               d.Lang,
+		MetaDesc:           d.MetaDesc,
+		MetaKeywords:       d.MetaKeywords,
+		Links:              d.Links,
+		StatusCode:         d.StatusCode,
+		ContentLength:      d.ContentLength,
+		ImportanceRank:     d.ImportanceRank,
+		IndexID:            d.IndexID,
+		IsDuplicate:        d.IsDuplicate,
+		OriginalDocID:      d.OriginalDocID,
+		VersionCount:       d.VersionCount,
+		CurrentVersion:     d.CurrentVersion,
+		ParsedContent:      d.ParsedContent,
+		Score:              d.Score,
+	}
+
+	// Convert enhanced keywords
+	if len(d.EnhancedKeywords) > 0 {
+		domainDoc.EnhancedKeywords = make([]domain.Keyword, len(d.EnhancedKeywords))
+		for i, kw := range d.EnhancedKeywords {
+			domainDoc.EnhancedKeywords[i] = domain.Keyword{
+				Text:             kw.Text,
+				Score:            kw.Score,
+				IsDomainSpecific: kw.IsDomainSpecific,
+				Category:         kw.Category,
+				Position:         kw.Position,
+			}
+		}
+	}
+
+	return domainDoc
+}
