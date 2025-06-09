@@ -2,6 +2,10 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"github.com/google/uuid"
+	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/elasticsearch/models"
 
 	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
 	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
@@ -25,8 +29,20 @@ func NewDocumentRepository(client *Client) *DocumentRepository {
 }
 
 func (d DocumentRepository) Save(ctx context.Context, document *domain.Document) error {
-	//TODO implement me
-	panic("implement me")
+	if document == nil {
+		return errors.New("document cannot be nil")
+	}
+	if err := document.Validate(); err != nil {
+		return fmt.Errorf("invalid document: %w", err)
+	}
+	if document.ID == "" {
+		document.ID = uuid.NewString()
+	}
+	modelDocument := models.FromDomain(document)
+	if err := d.client.IndexDocument(ctx, DocumentIndex, document.ID, modelDocument); err != nil {
+		return fmt.Errorf("error indexing document: %w", err)
+	}
+	return nil
 }
 
 func (d DocumentRepository) GetByID(ctx context.Context, id string) (*domain.Document, error) {
