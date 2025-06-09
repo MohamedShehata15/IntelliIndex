@@ -78,8 +78,22 @@ func (i IndexRepository) Create(ctx context.Context, index *domain.Index) error 
 }
 
 func (i IndexRepository) GetByID(ctx context.Context, id string) (*domain.Index, error) {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return nil, errors.New("index ID cannot be empty")
+	}
+	index, err := i.getIndexMetadata(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("error getting index metadata: %w", err)
+	}
+	if index == nil {
+		return nil, nil
+	}
+	count, err := i.getDocumentCount(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("error getting document count: %w", err)
+	}
+	index.DocumentCount = count
+	return index, nil
 }
 
 func (i IndexRepository) GetByName(ctx context.Context, name string) (*domain.Index, error) {
