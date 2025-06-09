@@ -1,0 +1,117 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ../../.. # Points to the project root
+      dockerfile: deployments/docker/dev/Dockerfile
+    ports:
+      - "8080:8080"
+      - "2345:2345" # Delve debugger port
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - DB_TYPE=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=intelliindex
+      - DB_PASSWORD=intelliindex_password
+      - DB_NAME=intelliindex
+      - DB_SSL_MODE=disable
+      - DB_AUTO_MIGRATE=true
+      - DB_LOG_LEVEL=debug
+      - GO_ENV=development
+    volumes:
+      # Mount project root but exclude tmp directory
+      - ../../..:/app
+      # Create an anonymous volume for the tmp directory to prevent it from being overridden
+      - /app/tmp
+      - backend_go_modules:/go/pkg/mod # Cache Go modules
+    depends_on:
+      - elasticsearch
+      - postgres
+    networks:
+      - intelliindex-network
+    # Enable debugging
+    security_opt:
+      - "seccomp:unconfined"
+    cap_add:
+      - SYS_PTRACE
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=intelliindex
+      - POSTGRES_PASSWORD=intelliindex_password
+      - POSTGRES_DB=intelliindex
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../init-scripts/postgres:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - intelliindex-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U intelliindex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:7.8
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@intellindex.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - intelliindex-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - intelliindex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - intelliindex-network
+
+networks:
+  intelliindex-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+  backend_go_modules:
+    driver: local
+  pgadmin-data:
+    driver: local
