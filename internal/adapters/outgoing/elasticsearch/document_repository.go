@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/elasticsearch/models"
+	"strings"
 
 	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
 	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
@@ -46,8 +47,17 @@ func (d DocumentRepository) Save(ctx context.Context, document *domain.Document)
 }
 
 func (d DocumentRepository) GetByID(ctx context.Context, id string) (*domain.Document, error) {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return nil, errors.New("document ID cannot be empty")
+	}
+	modelDocument, err := d.client.GetDocument(ctx, DocumentIndex, id)
+	if err != nil {
+		if strings.Contains(err.Error(), "document not found") {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting document by ID: %w", err)
+	}
+	return modelDocument.ToDomain(), nil
 }
 
 func (d DocumentRepository) GetByURL(ctx context.Context, url string) (*domain.Document, error) {
