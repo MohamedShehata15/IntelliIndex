@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
@@ -49,6 +50,27 @@ func (c *Client) DeleteDocument(ctx context.Context, indexName, docID string) er
 	res, err := c.PerformRequest(ctx, &esapi.DeleteRequest{
 		Index:      fullIndexName,
 		DocumentID: docID,
+	})
+	if err != nil {
+		return err
+	}
+	defer closeBody(res.Body)
+	return nil
+}
+
+func (c *Client) UpdateDocument(ctx context.Context, indexName, docID string, doc interface{}) error {
+	fullIndexName := c.IndexNameWithPrefix(indexName)
+	updateBody := map[string]interface{}{
+		"doc": doc,
+	}
+	updateJSON, err := json.Marshal(updateBody)
+	if err != nil {
+		return fmt.Errorf("error marshaling update body: %w", err)
+	}
+	res, err := c.PerformRequest(ctx, &esapi.UpdateRequest{
+		Index:      fullIndexName,
+		DocumentID: docID,
+		Body:       bytes.NewReader(updateJSON),
 	})
 	if err != nil {
 		return err
