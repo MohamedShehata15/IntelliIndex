@@ -219,8 +219,27 @@ func (i IndexRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (i IndexRepository) Update(ctx context.Context, index *domain.Index) error {
-	//TODO implement me
-	panic("implement me")
+	if index == nil {
+		return errors.New("index cannot be nil")
+	}
+	if index.ID == "" {
+		return errors.New("index ID cannot be empty")
+	}
+	if err := index.Validate(); err != nil {
+		return fmt.Errorf("invalid data: %w", err)
+	}
+	exists, err := i.indexExists(ctx, index.ID)
+	if err != nil {
+		return fmt.Errorf("error checking if index exists: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("index with ID %s does not exist", index.ID)
+	}
+	index.LastUpdated = time.Now()
+	if err := i.saveIndexMetadata(ctx, index); err != nil {
+		return fmt.Errorf("error updating index metadata: %w", err)
+	}
+	return nil
 }
 
 func (i IndexRepository) UpdateSettings(ctx context.Context, id string, settings domain.IndexSettings) error {
