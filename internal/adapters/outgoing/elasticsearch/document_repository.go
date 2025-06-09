@@ -131,8 +131,52 @@ func (d DocumentRepository) Update(ctx context.Context, document *domain.Documen
 }
 
 func (d DocumentRepository) List(ctx context.Context, page, pageSize int) ([]*domain.Document, int, error) {
-	//TODO implement me
-	panic("implement me")
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	from := (page - 1) * pageSize
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+		"from": from,
+		"size": pageSize,
+		"sort": []map[string]interface{}{
+			{"last_crawled": map[string]interface{}{"order": "desc"}},
+		},
+	}
+	res, err := d.client.PerformRequest(ctx, &esapi.SearchRequest{
+		Index: []string{d.client.IndexNameWithPrefix(DocumentIndex)},
+		Body:  bytes.NewReader(mustMarshalJSON(query)),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("error parsing for documents: %w", err)
+	}
+	var searchResult map[string]interface{}
+	if err := parseResponse(res.Body, &searchResult); err != nil {
+		return nil, 0, fmt.Errorf("error parsing search response: %w", err)
+	}
+	hitsObj := searchResult["hits"].(map[string]interface{})
+	total := int(hitsObj["total"].(map[string]interface{})["value"].(float64))
+	hits := hitsObj["hits"].([]interface{})
+
+	documents := make([]*domain.Document, 0, len(hits))
+	for _, hit := range hits {
+		hitMap := hit.(map[string]interface{})
+		doc := hitMap["_source"].(*models.Document)
+		doc.ID = hitMap["_id"].(string)
+		if score, ok := hitMap["_score"].(float64); ok && score > 0 {
+			doc.Score = score
+		}
+		documents = append(documents, doc.ToDomain())
+	}
+	return documents, total, nil
 }
 
 func (d DocumentRepository) Search(ctx context.Context, query *domain.SearchQuery) ([]*domain.Document, int, error) {
