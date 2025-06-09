@@ -95,3 +95,12 @@ func (c *Container) Reset() {
 
 	c.instances = make(map[string]interface{})
 }
+
+// Clear removes all instances and factories.
+func (c *Container) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.instances = make(map[string]interface{})
+	c.factories = make(map[string]factory)
+}
