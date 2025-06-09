@@ -291,6 +291,39 @@ func (i *IndexRepository) mapToIndex(source map[string]interface{}) (*domain.Ind
 	return index, nil
 }
 
+// indexToMap converts a domain Index to a map for Elasticsearch
+func (i *IndexRepository) indexToMap(index *domain.Index) (map[string]interface{}, error) {
+	indexMap := map[string]interface{}{
+		"Name":        index.Name,
+		"Description": index.Description,
+		"CreatedAt":   index.CreatedAt.Format(time.RFC3339),
+		"LastUpdated": index.LastUpdated.Format(time.RFC3339),
+		"Status":      string(index.Status),
+	}
+
+	settings := map[string]interface{}{
+		"Shards":          index.Settings.Shards,
+		"Replicas":        index.Settings.Replicas,
+		"RefreshInterval": index.Settings.RefreshInterval,
+	}
+
+	if len(index.Settings.Stopwords) > 0 {
+		settings["Stopwords"] = index.Settings.Stopwords
+	}
+
+	if len(index.Settings.Languages) > 0 {
+		settings["Languages"] = index.Settings.Languages
+	}
+
+	indexMap["Settings"] = settings
+
+	if len(index.DocumentMapping) > 0 {
+		indexMap["DocumentMapping"] = index.DocumentMapping
+	}
+
+	return indexMap, nil
+}
+
 // buildIndexSettings converts domain model settings to Elasticsearch settings
 func (i *IndexRepository) buildIndexSettings(index *domain.Index) (map[string]interface{}, map[string]interface{}, error) {
 	settings := createBasicSettings(index)
