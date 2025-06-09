@@ -388,6 +388,35 @@ func (i *IndexRepository) getIndexMetadata(ctx context.Context, id string) (*dom
 	return index, nil
 }
 
+// getDocumentCount retrieves the current document count for an index
+func (i *IndexRepository) getDocumentCount(ctx context.Context, id string) (int, error) {
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"term": map[string]interface{}{
+				"IndexID.keyword": id,
+			},
+		},
+	}
+
+	res, err := i.client.PerformRequest(ctx, &esapi.CountRequest{
+		Index: []string{i.client.IndexNameWithPrefix(DocumentIndex)},
+		Body:  bytes.NewReader(mustMarshalJSON(query)),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("error counting documents: %w", err)
+	}
+	defer res.Body.Close()
+
+	var countResult map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&countResult); err != nil {
+		return 0, fmt.Errorf("error parsing count response: %w", err)
+	}
+
+	count := int(countResult["count"].(float64))
+
+	return count, nil
+}
+
 // buildIndexSettings converts domain model settings to Elasticsearch settings
 func (i *IndexRepository) buildIndexSettings(index *domain.Index) (map[string]interface{}, map[string]interface{}, error) {
 	settings := createBasicSettings(index)
