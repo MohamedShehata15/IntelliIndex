@@ -28,3 +28,12 @@ func ResetContainer() {
 		defaultContainer.Reset()
 	}
 }
+
+// ClearContainer completely clears the container, removing all instances and factories.
+func ClearContainer() {
+	if defaultContainer != nil {
+		defaultContainer.Clear()
+		defaultContainer = nil
+	}
+	containerOnce = sync.Once{}
+}
