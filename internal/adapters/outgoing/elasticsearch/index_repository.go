@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
@@ -346,6 +347,45 @@ func (i *IndexRepository) saveIndexMetadata(ctx context.Context, index *domain.I
 	defer res.Body.Close()
 
 	return nil
+}
+
+// getIndexMetadata retrieves an index's metadata from the metadata index
+func (i *IndexRepository) getIndexMetadata(ctx context.Context, id string) (*domain.Index, error) {
+	if err := i.ensureMetadataIndexExists(ctx); err != nil {
+		return nil, fmt.Errorf("error ensuring metadata index exists: %w", err)
+	}
+
+	res, err := i.client.PerformRequest(ctx, &esapi.GetRequest{
+		Index:      i.client.IndexNameWithPrefix("indices-metadata"),
+		DocumentID: id,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error getting index metadata: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == 404 {
+		return nil, nil // Return nil without error for not found
+	}
+
+	var response map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("error parsing metadata response: %w", err)
+	}
+
+	source, ok := response["_source"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected metadata response format")
+	}
+
+	index, err := i.mapToIndex(source)
+	if err != nil {
+		return nil, fmt.Errorf("error converting map to index: %w", err)
+	}
+
+	index.ID = id
+
+	return index, nil
 }
 
 // buildIndexSettings converts domain model settings to Elasticsearch settings
