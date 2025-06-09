@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"io"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/google/uuid"
 
 	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
 	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
@@ -27,8 +29,52 @@ type IndexRepository struct {
 var _ outgoing.IndexRepository = (*IndexRepository)(nil)
 
 func (i IndexRepository) Create(ctx context.Context, index *domain.Index) error {
-	//TODO implement me
-	panic("implement me")
+	if index == nil {
+		return errors.New("index cannot be nil")
+	}
+
+	if err := index.Validate(); err != nil {
+		return fmt.Errorf("invalid index; %w", err)
+	}
+
+	if index.ID == "" {
+		index.ID = uuid.NewString()
+	}
+
+	settings, mappings, err := i.buildIndexSettings(index)
+	if err != nil {
+		return fmt.Errorf("error building index settings: %w", err)
+	}
+
+	body := map[string]interface{}{
+		"settings": settings,
+		"mappings": mappings,
+	}
+
+	indexName := i.client.IndexNameWithPrefix(index.ID)
+	res, err := i.client.PerformRequest(ctx, &esapi.IndicesCreateRequest{
+		Index: indexName,
+		Body:  bytes.NewReader(mustMarshalJSON(body)),
+	})
+	if err != nil {
+		return fmt.Errorf("error creating index: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("error closing response body: %v\n", err)
+		}
+	}(res.Body)
+	index.UpdateStatus(domain.IndexStatusActive)
+
+	if err := i.saveIndexMetadata(ctx, index); err != nil {
+		return fmt.Errorf("error saving index metadata: %w", err)
+	}
+	backgroundCtx := context.Background()
+	if err := i.SetupAutoRefresh(backgroundCtx, index.ID); err != nil {
+		fmt.Printf("Warning: Failed to setup automatic refresh for index %s: %v\n", index.ID, err)
+	}
+	return nil
 }
 
 func (i IndexRepository) GetByID(ctx context.Context, id string) (*domain.Index, error) {
