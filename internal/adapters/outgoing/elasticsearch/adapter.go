@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
 	"github.com/mohamedshehata15/intelli-index/internal/pkg/di"
 	"github.com/mohamedshehata15/intelli-index/pkg/config"
 )
@@ -43,4 +44,9 @@ func RegisterElasticsearchAdapters(container *di.Container, cfg *config.ElasticC
 	})
 
 	return nil
+}
+
+// GetDocumentRepository retrieves the document repository from the container
+func GetDocumentRepository(container *di.Container) outgoing.DocumentRepository {
+	return container.MustResolve("documentRepository").(outgoing.DocumentRepository)
 }
