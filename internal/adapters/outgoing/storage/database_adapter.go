@@ -50,3 +50,18 @@ func (s *SQLAdapter) Initialize() error {
 func (s *SQLAdapter) Close() error {
 	return s.client.Close()
 }
+
+// DocumentRepository returns the document repository
+func (s *SQLAdapter) DocumentRepository() *DocumentRepository {
+	return s.documentRepo
+}
+
+// IndexRepository return the index repository
+func (s *SQLAdapter) IndexRepository() *IndexRepository {
+	return s.indexRepo
+}
+
+// MigrationHandler returns the migration handler
+func (s *SQLAdapter) MigrationHandler() *MigrationHandler {
+	return s.migrationHandler
+}
