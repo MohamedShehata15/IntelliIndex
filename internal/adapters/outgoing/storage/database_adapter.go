@@ -32,3 +32,16 @@ func NewSQLAdapter(cfg *config.DBConfig) (*SQLAdapter, error) {
 	}
 	return adapter, nil
 }
+
+// Initialize initializes the database, running migrations if configured
+func (s *SQLAdapter) Initialize() error {
+	if err := s.client.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
+	}
+	if s.client.Config.AutoMigrate {
+		if err := s.migrationHandler.RunMigrations(); err != nil {
+			return fmt.Errorf("failed to run migrations: %w", err)
+		}
+	}
+	return nil
+}
