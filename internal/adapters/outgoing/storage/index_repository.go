@@ -21,9 +21,9 @@ type IndexRepository struct {
 }
 
 // NewIndexRepository creates a new gorm index repository
-func NewIndexRepository(db *gorm.DB) *IndexRepository {
+func NewIndexRepository(client *Client) *IndexRepository {
 	return &IndexRepository{
-		db: db,
+		db: client.DB,
 	}
 }
 
