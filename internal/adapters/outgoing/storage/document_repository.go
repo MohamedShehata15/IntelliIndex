@@ -21,8 +21,10 @@ type DocumentRepository struct {
 }
 
 // NewDocumentRepository creates a new document repository
-type NewDocumentRepository struct {
-	db *gorm.DB
+func NewDocumentRepository(client *Client) *DocumentRepository {
+	return &DocumentRepository{
+		db: client.DB,
+	}
 }
 
 // Ensure DocumentRepository implements the outgoing.DocumentRepository interface
