@@ -45,3 +45,8 @@ func (s *SQLAdapter) Initialize() error {
 	}
 	return nil
 }
+
+// Close closes the database connection
+func (s *SQLAdapter) Close() error {
+	return s.client.Close()
+}
