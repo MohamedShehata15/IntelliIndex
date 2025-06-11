@@ -13,6 +13,12 @@ type StorageAdapterFactory struct {
 
 var _ di.AdapterRegistrar = (*StorageAdapterFactory)(nil)
 
+func NewStorageAdapterFactory(cfg *config.DBConfig) *StorageAdapterFactory {
+	return &StorageAdapterFactory{
+		config: cfg,
+	}
+}
+
 func (s *StorageAdapterFactory) Register(container *di.Container) error {
 	return RegisterStorageAdapters(container, s.config)
 }
