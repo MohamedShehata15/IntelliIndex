@@ -6,6 +6,10 @@ import (
 	"log"
 
 	"github.com/mohamedshehata15/intelli-index/pkg/config"
+
+	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/elasticsearch"
+	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/storage"
+	"github.com/mohamedshehata15/intelli-index/internal/pkg/di"
 )
 
 func main() {
@@ -24,6 +28,15 @@ func main() {
 
 	log.Printf("Configuration loaded successfully (Elasticsearch: %s, Database: %s)",
 		cfg.Elastic.URL, cfg.Database.Type)
+
+	container := di.Bootstrap()
+	err = di.BatchRegister(container,
+		elasticsearch.NewElasticsearchAdapterFactory(&cfg.Elastic),
+		storage.NewStorageAdapterFactory(&cfg.Database),
+	)
+	if err != nil {
+		log.Fatalf("Failed to register adapters: %v", err)
+	}
 
 }
 
