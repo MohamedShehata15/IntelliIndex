@@ -155,6 +155,16 @@ func Load() (*Config, error) {
 
 // applyEnvironmentOverrides applies environment variable values over the loaded config
 func applyEnvironmentOverrides(config *Config) {
+	// Server overrides
+	if val := os.Getenv("SERVER_PORT"); val != "" {
+		if intVal, err := strconv.Atoi(val); err == nil {
+			config.Server.Port = intVal
+		}
+	}
+	if val := os.Getenv("SERVER_LOG_LEVEL"); val != "" {
+		config.Server.LogLevel = val
+	}
+
 	// Elasticsearch overrides
 	if val := os.Getenv("ELASTICSEARCH_URL"); val != "" {
 		config.Elastic.URL = val
