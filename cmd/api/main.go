@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	httpAdapter "github.com/mohamedshehata15/intelli-index/internal/adapters/incoming/http"
 	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/elasticsearch"
@@ -73,6 +77,19 @@ func main() {
 			log.Fatalf("Server failed: %v", err)
 		}
 	}()
+
+	// Set up graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
 
 }
 
