@@ -1,15 +1,17 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 
-	"github.com/mohamedshehata15/intelli-index/pkg/config"
-
+	httpAdapter "github.com/mohamedshehata15/intelli-index/internal/adapters/incoming/http"
 	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/elasticsearch"
 	"github.com/mohamedshehata15/intelli-index/internal/adapters/outgoing/storage"
 	"github.com/mohamedshehata15/intelli-index/internal/pkg/di"
+	"github.com/mohamedshehata15/intelli-index/pkg/config"
 )
 
 func main() {
@@ -57,6 +59,20 @@ func main() {
 			log.Println("Database migrations completed successfully")
 		}
 	}
+
+	// Create HTTP server
+	server := httpAdapter.NewServer()
+	serverAddr := fmt.Sprintf(":%d", cfg.Server.Port)
+	srv := &http.Server{
+		Addr:    serverAddr,
+		Handler: server.Handler(),
+	}
+	go func() {
+		log.Printf("Starting server on %s\n", serverAddr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
 
 }
 
