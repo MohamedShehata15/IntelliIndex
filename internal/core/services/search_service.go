@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
 	"github.com/mohamedshehata15/intelli-index/internal/core/ports/incoming"
@@ -31,8 +32,10 @@ func (s searchService) Search(ctx context.Context, query *domain.SearchQuery) (*
 }
 
 func (s searchService) GetDocument(ctx context.Context, id string) (*domain.Document, error) {
-	//TODO implement me
-	panic("implement me")
+	if id == "" {
+		return nil, errors.New("document ID cannot be empty")
+	}
+	return s.docRepo.GetByID(ctx, id)
 }
 
 func (s searchService) SuggestQueries(ctx context.Context, partialQuery string, maxSuggestions int) ([]domain.SearchSuggestion, error) {
