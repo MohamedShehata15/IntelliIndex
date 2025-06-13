@@ -18,6 +18,8 @@ func main() {
 	// Command line flags
 	configPath := flag.String("config", "", "Path to configuration file (if not specified, environment variables will be used)")
 	envFile := flag.String("env", ".env", "Path to .env file for environment variables")
+	runMigrations := flag.Bool("migrate", false, "Run database migrations")
+	resetDB := flag.Bool("reset-db", false, "Reset database (drop all tables and recreate)")
 	flag.Parse()
 
 	// Load configuration
@@ -36,6 +38,24 @@ func main() {
 	)
 	if err != nil {
 		log.Fatalf("Failed to register adapters: %v", err)
+	}
+
+	// Database Migration via flags or config
+	if *runMigrations || cfg.Database.AutoMigrate {
+		log.Println("Running database migrations based on configuration or command line flag")
+		migrationHandler := storage.GetMigrationHandler(container)
+
+		if *resetDB {
+			if err := migrationHandler.ResetDatabase(); err != nil {
+				log.Fatalf("Failed to reset database: %v", err)
+			}
+			log.Println("Database reset successfully")
+		} else {
+			if err := migrationHandler.RunMigrations(); err != nil {
+				log.Fatalf("Failed to run database migrations: %v", err)
+			}
+			log.Println("Database migrations completed successfully")
+		}
 	}
 
 }
