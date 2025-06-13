@@ -14,6 +14,7 @@ import (
 
 // Config represents the application configuration
 type Config struct {
+	Server   ServerConfig
 	Elastic  ElasticConfig
 	Database DBConfig
 }
@@ -105,6 +106,14 @@ func LoadEnvFile(envFile string) (bool, string, error) {
 // Load loads configuration from environment variables
 func Load() (*Config, error) {
 	config := &Config{
+		Server: ServerConfig{
+			Port:            getEnvInt("SERVER_PORT", 8080),
+			ReadTimeout:     getEnvDuration("SERVER_READ_TIMEOUT", 10*time.Second),
+			WriteTimeout:    getEnvDuration("SERVER_WRITE_TIMEOUT", 30*time.Second),
+			ShutdownTimeout: getEnvDuration("SERVER_SHUTDOWN_TIMEOUT", 10*time.Second),
+			LogLevel:        getEnvStr("SERVER_LOG_LEVEL", "info"),
+			AllowOrigins:    getEnvStringSlice("SERVER_ALLOW_ORIGINS", []string{"*"}),
+		},
 		Elastic: ElasticConfig{
 			URL:              getEnvStr("ELASTICSEARCH_URL", "http://elasticsearch:9200"),
 			IndexPrefix:      getEnvStr("ELASTICSEARCH_INDEX_PREFIX", "search-engine"),
