@@ -84,3 +84,14 @@ func (u *User) RemovePermission(permission string) {
 		}
 	}
 }
+
+// RemoveAPIKey removes an API key from the user
+func (u *User) RemoveAPIKey(keyID string) {
+	for i, k := range u.APIKeys {
+		if k.ID == keyID {
+			u.APIKeys = append(u.APIKeys[:i], u.APIKeys[i+1:]...)
+			u.UpdatedAt = time.Now()
+			break
+		}
+	}
+}
