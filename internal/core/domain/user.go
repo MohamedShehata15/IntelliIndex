@@ -46,3 +46,11 @@ func (u *User) HasPermission(permission string) bool {
 	}
 	return false
 }
+
+// AddRole adds a role to the user if they don't already have it
+func (u *User) AddRole(role string) {
+	if !u.HasRole(role) {
+		u.Roles = append(u.Roles, role)
+		u.UpdatedAt = time.Now()
+	}
+}
