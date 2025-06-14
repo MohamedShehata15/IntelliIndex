@@ -54,3 +54,14 @@ func (u *User) AddRole(role string) {
 		u.UpdatedAt = time.Now()
 	}
 }
+
+// RemoveRole removes a role from the user
+func (u *User) RemoveRole(role string) {
+	for i, r := range u.Roles {
+		if r == role {
+			u.Roles = append(u.Roles[:i], u.Roles[i+1:]...)
+			u.UpdatedAt = time.Now()
+			break
+		}
+	}
+}
