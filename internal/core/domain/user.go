@@ -36,3 +36,13 @@ func (u *User) HasRole(role string) bool {
 	}
 	return false
 }
+
+// HasPermission checks if the user has the specified permission
+func (u *User) HasPermission(permission string) bool {
+	for _, p := range u.Permissions {
+		if p == permission {
+			return true
+		}
+	}
+	return false
+}
