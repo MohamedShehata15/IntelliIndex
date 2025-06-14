@@ -26,3 +26,13 @@ type APIKey struct {
 	ExpiresAt time.Time
 	LastUsed  time.Time
 }
+
+// HasRole checks if the user has the specified role
+func (u *User) HasRole(role string) bool {
+	for _, r := range u.Roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
