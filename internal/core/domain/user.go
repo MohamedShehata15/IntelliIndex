@@ -95,3 +95,8 @@ func (u *User) RemoveAPIKey(keyID string) {
 		}
 	}
 }
+
+// UpdateLastLogin updates the last login timestamp
+func (u *User) UpdateLastLogin() {
+	u.LastLoginAt = time.Now()
+}
