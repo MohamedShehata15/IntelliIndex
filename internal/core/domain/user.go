@@ -65,3 +65,22 @@ func (u *User) RemoveRole(role string) {
 		}
 	}
 }
+
+// AddPermission adds a permission to the user if they don't already have it
+func (u *User) AddPermission(permission string) {
+	if !u.HasPermission(permission) {
+		u.Permissions = append(u.Permissions, permission)
+		u.UpdatedAt = time.Now()
+	}
+}
+
+// RemovePermission removes a permission from the user
+func (u *User) RemovePermission(permission string) {
+	for i, p := range u.Permissions {
+		if p == permission {
+			u.Permissions = append(u.Permissions[:i], u.Permissions[i+1:]...)
+			u.UpdatedAt = time.Now()
+			break
+		}
+	}
+}
