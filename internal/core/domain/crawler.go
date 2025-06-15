@@ -10,3 +10,19 @@ const (
 	CrawlStatusFailed    CrawlStatus = "failed"
 	CrawlStatusCancelled CrawlStatus = "cancelled"
 )
+
+// CrawlJob represents a web crawling job
+type CrawlJob struct {
+	ID             string
+	SeedURLs       []string
+	MaxDepth       int
+	MaxURLs        int
+	AllowedDomains []string
+	StartedAt      int64
+	CompletedAt    int64
+	Status         CrawlStatus
+	DocumentCount  int
+	ErrorCount     int
+	IndexID        string
+	CreatedAt      int64
+}
