@@ -6,6 +6,7 @@ import "time"
 type User struct {
 	ID          string
 	Username    string
+	Email       string
 	Password    string
 	Roles       []string
 	Permissions []string
