@@ -26,3 +26,15 @@ type CrawlJob struct {
 	IndexID        string
 	CreatedAt      int64
 }
+
+// CrawlProgress represents the current progress of a crawling job
+type CrawlProgress struct {
+	JobID          string
+	Status         CrawlStatus
+	ProcessedURLs  int
+	DiscoveredURLs int
+	CurrentDepth   int
+	ErrorCount     int
+	Errors         []string
+	LastUpdated    int64
+}
