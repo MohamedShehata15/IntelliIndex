@@ -1,6 +1,7 @@
 package webcrawler
 
 import (
+	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
 	"github.com/mohamedshehata15/intelli-index/internal/pkg/di"
 	"github.com/mohamedshehata15/intelli-index/pkg/config"
 )
@@ -30,4 +31,9 @@ func RegisterWebCrawlerAdapter(container *di.Container, cfg *config.CrawlerConfi
 		return NewWebCrawler(cfg), nil
 	})
 	return nil
+}
+
+// GetWebCrawler retrieves the web crawler implementation from the container
+func GetWebCrawler(container *di.Container) outgoing.WebCrawler {
+	return container.MustResolve("webCrawler").(outgoing.WebCrawler)
 }
