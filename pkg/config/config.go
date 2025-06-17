@@ -197,6 +197,26 @@ func applyEnvironmentOverrides(config *Config) {
 	if val := os.Getenv("DB_HOST"); val != "" {
 		config.Database.Host = val
 	}
+
+	// Crawler overrides
+	if val := os.Getenv("CRAWLER_MAX_DEPTH"); val != "" {
+		if intVal, err := strconv.Atoi(val); err == nil {
+			config.Crawler.MaxDepth = intVal
+		}
+	}
+	if val := os.Getenv("CRAWLER_MAX_URLS"); val != "" {
+		if intVal, err := strconv.Atoi(val); err == nil {
+			config.Crawler.MaxURLs = intVal
+		}
+	}
+	if val := os.Getenv("CRAWLER_USER_AGENT"); val != "" {
+		config.Crawler.UserAgent = val
+	}
+	if val := os.Getenv("CRAWLER_RESPECT_ROBOTS_TXT"); val != "" {
+		if boolVal, err := strconv.ParseBool(val); err == nil {
+			config.Crawler.RespectRobotsTx = boolVal
+		}
+	}
 }
 
 func getEnvStr(key, fallback string) string {
