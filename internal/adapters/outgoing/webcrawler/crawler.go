@@ -17,8 +17,10 @@ type Crawler struct {
 var _ outgoing.WebCrawler = (*Crawler)(nil)
 
 // NewWebCrawler creates a new instance of Crawler
-func NewWebCrawler() *Crawler {
-	return &Crawler{}
+func NewWebCrawler(config *config.CrawlerConfig) *Crawler {
+	return &Crawler{
+		config,
+	}
 }
 
 func (c *Crawler) Crawl(ctx context.Context, url string) (*domain.CrawlResult, error) {
