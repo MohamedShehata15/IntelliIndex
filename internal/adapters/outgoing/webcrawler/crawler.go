@@ -2,6 +2,9 @@ package webcrawler
 
 import (
 	"context"
+
+	"github.com/mohamedshehata15/intelli-index/pkg/config"
+
 	"github.com/mohamedshehata15/intelli-index/internal/core/domain"
 	"github.com/mohamedshehata15/intelli-index/internal/core/ports/outgoing"
 )
