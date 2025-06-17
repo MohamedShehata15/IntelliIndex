@@ -38,3 +38,17 @@ type CrawlProgress struct {
 	Errors         []string
 	LastUpdated    int64
 }
+
+// MonitoringOptions contains configuration for crawler monitoring
+type MonitoringOptions struct {
+	LogLevel           string
+	EnableFileLogging  bool
+	MonitoringInterval int
+	EnableTracing      bool
+	AlertThresholds    map[string]interface{}
+	EnableAlerts       bool
+	ExternalLogging    bool
+	ExternalEndpoint   string
+	NotificationEmail  string
+	ExportMetrics      bool
+}
