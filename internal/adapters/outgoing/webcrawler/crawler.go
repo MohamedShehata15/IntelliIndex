@@ -7,7 +7,9 @@ import (
 )
 
 // Crawler implements the outgoing.WebCrawler interface
-type Crawler struct{}
+type Crawler struct {
+	config *config.CrawlerConfig
+}
 
 var _ outgoing.WebCrawler = (*Crawler)(nil)
 
