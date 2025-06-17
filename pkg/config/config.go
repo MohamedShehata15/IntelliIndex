@@ -145,6 +145,16 @@ func Load() (*Config, error) {
 			LogLevel:      getEnvStr("DB_LOG_LEVEL", "error"),
 			MigrationPath: getEnvStr("DB_MIGRATION_PATH", "migrations"),
 		},
+		Crawler: CrawlerConfig{
+			MaxDepth:        getEnvInt("CRAWLER_MAX_DEPTH", 3),
+			MaxURLs:         getEnvInt("CRAWLER_MAX_URLS", 1000),
+			RequestDelay:    getEnvDuration("CRAWLER_REQUEST_DELAY", 500*time.Millisecond),
+			Timeout:         getEnvDuration("CRAWLER_TIMEOUT", 10*time.Second),
+			RespectRobotsTx: getEnvBool("CRAWLER_RESPECT_ROBOTS_TXT", true),
+			UserAgent:       getEnvStr("CRAWLER_USER_AGENT", "IntelliIndex Crawler"),
+			AllowedDomains:  getEnvStringSlice("CRAWLER_ALLOWED_DOMAINS", []string{}),
+			ExcludedPaths:   getEnvStringSlice("CRAWLER_EXCLUDED_PATHS", []string{}),
+		},
 	}
 
 	if err := config.Validate(); err != nil {
