@@ -17,6 +17,7 @@ type Config struct {
 	Server   ServerConfig
 	Elastic  ElasticConfig
 	Database DBConfig
+	Crawler  CrawlerConfig
 }
 
 // ValidationError is returned when configuration validation fails
