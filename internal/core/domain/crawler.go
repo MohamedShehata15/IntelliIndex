@@ -52,3 +52,28 @@ type MonitoringOptions struct {
 	NotificationEmail  string
 	ExportMetrics      bool
 }
+
+// CrawlOptions contains configuration options for a crawl job
+type CrawlOptions struct {
+	MaxDepth          int
+	MaxURLs           int
+	TimeoutSeconds    int
+	WorkerCount       int
+	RespectRobotsTxt  bool
+	AllowedDomains    []string
+	ExcludedPaths     []string
+	UserAgent         string
+	RetryCount        int
+	PolitenessDelay   int
+	Headers           map[string]string
+	MonitoringOptions *MonitoringOptions
+	ClassificationOptions
+}
+
+type ClassificationOptions struct {
+	EnableClassification bool
+	DefaultLanguage      string
+	TopicDetection       bool
+	KeywordExtraction    bool
+	ClassifyByTypes      bool
+}
